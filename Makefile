@@ -19,4 +19,4 @@ inside-container:
 
 prepare-dev:
 	docker build -f Dockerfile -t jail-dev .
-	docker create -i -t -v "$(shell pwd)":$(CONTAINER_WORKDIR) -w $(CONTAINER_WORKDIR) --name jail-dev jail-dev
+	docker create -i -t -v "$(shell pwd)":$(CONTAINER_WORKDIR) -w $(CONTAINER_WORKDIR) --security-opt=seccomp:unconfined --name jail-dev jail-dev

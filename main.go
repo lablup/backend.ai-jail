@@ -10,7 +10,7 @@ Example:
 package main
 
 import (
-	"fmt"
+	"flag"
 	"github.com/fatih/color"
 	"github.com/lablup/sorna-jail/policy"
 	"github.com/lablup/sorna-jail/utils"
@@ -18,18 +18,17 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"runtime"
 	"syscall"
 )
 
-const debug = false
+type Exit struct{ Code int }
 
 var (
 	myExecPath, _  = utils.GetExecutable(os.Getpid())
 	myPath         = filepath.Dir(myExecPath)
-	intraJailPath  = path.Join(myPath, "intra-jail")
+	intraJailPath  = myExecPath
 	arch, _        = seccomp.GetNativeArch()
 	id_Open, _     = seccomp.GetSyscallFromNameByArch("open", arch)
 	id_Access, _   = seccomp.GetSyscallFromNameByArch("access", arch)
@@ -44,7 +43,11 @@ var (
 	id_Chmod, _    = seccomp.GetSyscallFromNameByArch("chmod", arch)
 	id_Fchmodat, _ = seccomp.GetSyscallFromNameByArch("fchmodat", arch)
 )
+
+var debug bool = false
 var policyInst policy.SandboxPolicy = nil
+var policyName string
+var childMode bool = false
 var execCount int = 0
 var forkCount int = 0
 var childCount uint = 1
@@ -467,42 +470,127 @@ loop:
 	} /* endloop */
 }
 
+func init() {
+	flag.BoolVar(&childMode, "child-mode", false, "Used to run the child mode to initiate tracing.")
+	flag.BoolVar(&debug, "debug", false, "Set the debug mode.")
+}
+
+func handleExit() {
+	if e := recover(); e != nil {
+		color.Unset()
+		// When log.Panic is used, recover() returns the printed string.
+		if _, ok := e.(string); ok == true {
+			os.Exit(1)
+		}
+		// When panic(Exit{N}) is used.
+		if exit, ok := e.(Exit); ok == true {
+			os.Exit(exit.Code)
+		}
+		// Otherwise bubble up.
+		panic(e)
+	}
+}
+
 func main() {
-	l := log.New(os.Stderr, "", 0)
-	if len(os.Args) < 2 {
-		l.Fatal("Main: Not enough command-line arguments. See the docs.")
-	}
-	policyName := os.Args[1]
 	var err error
-	policyInst, err = policy.GeneratePolicy(policyName)
-	if err != nil {
-		l.Fatal("GeneratePolicy: ", err)
-	}
+	defer handleExit()
 
-	/* Initialize fork/exec of the child. */
-	runtime.GOMAXPROCS(1)
-	runtime.LockOSThread()
-	// Locking the OS thread is required to let syscall.Wait4() work correctly
-	// because waitpid() only monitors the caller's direct children, not
-	// siblings' children.
-	args := append([]string{intraJailPath}, os.Args[2:]...)
-	cwd, _ := os.Getwd()
-	envs := utils.FilterEnvs(os.Environ(), policyInst.GetPreservedEnvKeys())
-	envs = append(envs, policyInst.GetExtraEnvs()...)
+	l := log.New(os.Stderr, "", 0)
+	flag.Parse()
 
-	var pid int
-	pid, err = syscall.ForkExec(args[0], args, &syscall.ProcAttr{
-		cwd,
-		envs,
-		[]uintptr{0, 1, 2},
-		&syscall.SysProcAttr{
-			Ptrace: false, // should be disabled when using ptraceSeize
-		},
-	})
-	if err != nil {
-		l.Fatal(fmt.Sprintf("ForkExec(\"%s\"): ", args[0]), err)
+	if !childMode {
+		/* The parent. */
+
+		if flag.NArg() < 2 {
+			color.Set(color.FgRed)
+			l.Panic("Main: Not enough command-line arguments. See the docs.")
+		}
+
+		policyName := flag.Arg(0)
+		policyInst, err = policy.GeneratePolicy(policyName)
+		if err != nil {
+			color.Set(color.FgRed)
+			l.Panic("GeneratePolicy: ", err)
+		}
+
+		/* Initialize fork/exec of the child. */
+		runtime.GOMAXPROCS(1)
+		runtime.LockOSThread()
+		// Locking the OS thread is required to let syscall.Wait4() work correctly
+		// because waitpid() only monitors the caller's direct children, not
+		// siblings' children.
+		args := append([]string{intraJailPath, "-child-mode"}, flag.Args()[1:]...)
+		cwd, _ := os.Getwd()
+		envs := utils.FilterEnvs(os.Environ(), policyInst.GetPreservedEnvKeys())
+		envs = append(envs, policyInst.GetExtraEnvs()...)
+
+		var pid int
+		pid, err = syscall.ForkExec(args[0], args, &syscall.ProcAttr{
+			cwd,
+			envs,
+			[]uintptr{0, 1, 2},
+			&syscall.SysProcAttr{
+				Ptrace: false, // should be disabled when using ptraceSeize
+			},
+		})
+		if err != nil {
+			color.Set(color.FgRed)
+			l.Panicf("ForkExec(\"%s\"): %s", args[0], err)
+		}
+		traceProcess(l, pid)
+
+	} else {
+		/* The child. */
+
+		syscall.RawSyscall(syscall.SYS_PRCTL, syscall.PR_SET_PTRACER, uintptr(os.Getppid()), 0)
+
+		arch, _ := seccomp.GetNativeArch()
+		laterFilter, _ := seccomp.NewFilter(seccomp.ActErrno.SetReturnCode(int16(syscall.EPERM)))
+		for _, syscallName := range policy.AllowedSyscalls {
+			syscallId, _ := seccomp.GetSyscallFromNameByArch(syscallName, arch)
+			laterFilter.AddRuleExact(syscallId, seccomp.ActAllow)
+		}
+		for _, syscallName := range policy.TracedSyscalls {
+			syscallId, _ := seccomp.GetSyscallFromNameByArch(syscallName, arch)
+			laterFilter.AddRuleExact(syscallId, seccomp.ActTrace)
+		}
+		killSyscalls := []string{"kill", "killpg", "tkill", "tgkill"}
+		for _, syscallName := range killSyscalls {
+			scId, _ := seccomp.GetSyscallFromNameByArch(syscallName, arch)
+			laterFilter.AddRuleExact(scId, seccomp.ActTrace)
+		}
+		for syscallName, cond := range policy.ConditionallyAllowedSyscalls {
+			syscallId, _ := seccomp.GetSyscallFromNameByArch(syscallName, arch)
+			laterFilter.AddRuleConditional(syscallId, seccomp.ActAllow, []seccomp.ScmpCondition{cond})
+		}
+		laterFilter.SetNoNewPrivsBit(true)
+
+		// Inform the parent that I'm ready to continue.
+		// Any code before this line code must use only non-traced system calls in
+		// the filter because the tracer has not set up itself yet.
+		// (traced syscalls will cause ENOSYS "function not implemented" error)
+		syscall.Kill(os.Getpid(), syscall.SIGSTOP)
+
+		// Now we have the working tracer parent.
+		// Make kill() syscall to be traced as well for more sophisticated filtering.
+		err := laterFilter.Load()
+		if err != nil {
+			color.Set(color.FgRed)
+			l.Panic("ScmpFilter.Load (2): ", err)
+		}
+		laterFilter.Release()
+
+		// NOTE: signal.Reset() here causes race conditions with the tracer.
+		// (syscall tracing doesn't work deterministically with it.)
+
+		// Replace myself with the language runtime.
+		err = syscall.Exec(flag.Arg(0), flag.Args()[0:], os.Environ())
+
+		// NOTE: "function not implemented" errors here may be due to above codes.
+		color.Set(color.FgRed)
+		l.Panicf("Exec(\"%s\"): %s\nNOTE: You need to provide the absolute path.", flag.Arg(0), err)
+
 	}
-	traceProcess(l, pid)
 }
 
 // vim: ts=4 sts=4 sw=4 noet
