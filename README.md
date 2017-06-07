@@ -2,10 +2,10 @@
 
 A dynamic sandbox for Sorna kernels.
 
- * Requirements: Docker, make
-
 
 ## Testing and Debugging
+
+ * Requirements: Docker, make
 
 As we provide all docker configurations to run this code with valid GOPATH,
 you don't have to place the cloned working copy somewhere special.
@@ -29,3 +29,5 @@ To debug, add `-debug` flag to the command-line arguments.
 Run `make manylinux` for glibc-based binaries (for Ubuntu/Debian Linux) and
 `make musllinux` for musl-based binaries (for Alpine Linux).
 
+On the target systems or images, you need to install libseccomp 2.2 or higher
+to use Sorna jail.
