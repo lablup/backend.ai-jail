@@ -1,14 +1,14 @@
-CONTAINER_GOPATH=/go/src/github.com/lablup/sorna-jail
+CONTAINER_WORKDIR=/go/src/github.com/lablup/sorna-jail
 
 manylinux:
 	docker build -f Dockerfile.builder-manylinux -t jail-builder-manylinux .
-	docker run --rm -v "$(shell pwd)":$(CONTAINER_GOPATH) -w $(CONTAINER_GOPATH) jail-builder-manylinux
+	docker run --rm -v "$(shell pwd)":$(CONTAINER_WORKDIR) -w $(CONTAINER_WORKDIR) jail-builder-manylinux
 	mkdir -p build-manylinux
 	mv sorna-jail build-manylinux/jail
 
 musllinux:
 	docker build -f Dockerfile.builder-musllinux -t jail-builder-musllinux .
-	docker run --rm -v "$(shell pwd)":$(CONTAINER_GOPATH) -w $(CONTAINER_GOPATH) jail-builder-musllinux
+	docker run --rm -v "$(shell pwd)":$(CONTAINER_WORKDIR) -w $(CONTAINER_WORKDIR) jail-builder-musllinux
 	mkdir -p build-musllinux
 	mv sorna-jail build-musllinux/jail
 
