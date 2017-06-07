@@ -1,16 +1,11 @@
-FROM alpine:3.6
-
+FROM golang:1.8-alpine
 # This container is for daily development.
 
-RUN apk add --no-cache build-base git gcc go libseccomp-dev linux-headers
-
-RUN mkdir -p /root/workspace/src
-ENV GOPATH=/root/workspace
-
+RUN apk add --no-cache build-base git libseccomp-dev linux-headers
 RUN go get github.com/seccomp/libseccomp-golang
 RUN go get github.com/fatih/color
 
-ENV TERM=xterm-256color
+# When running this image, mount the working copy root to
+# /go/src/github.com/lablup/sorna-jail
 
-WORKDIR /root/workspace/src/github.com/lablup/sorna-jail
 CMD ["/bin/ash"]

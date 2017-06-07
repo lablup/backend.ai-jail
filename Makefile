@@ -16,3 +16,7 @@ inside-container:
 	go get -u github.com/fatih/color
 	go get -u github.com/seccomp/libseccomp-golang
 	go build -v
+
+prepare-dev:
+	docker build -f Dockerfile -t jail-dev .
+	docker create -i -t -v "$(shell pwd)":$(CONTAINER_WORKDIR) -w $(CONTAINER_WORKDIR) --name jail-dev jail-dev
