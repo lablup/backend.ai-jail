@@ -24,7 +24,7 @@ func (p *GitPolicy) GetExecAllowance() int {
 }
 
 func (p *GitPolicy) GetForkAllowance() int {
-	// Note: pyzmq performs clone() twice on intialization.
+	// Note: pyzmq performs clone() twice on initialization.
 	return -1
 }
 

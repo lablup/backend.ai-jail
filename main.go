@@ -23,7 +23,7 @@ import (
 	"syscall"
 )
 
-type Exit struct{ Code int }
+type Exit struct { Code int }
 
 var (
 	myExecPath, _  = utils.GetExecutable(os.Getpid())

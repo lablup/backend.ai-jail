@@ -29,7 +29,7 @@ func (p *PythonTensorFlowPolicy) GetExecAllowance() int {
 }
 
 func (p *PythonTensorFlowPolicy) GetForkAllowance() int {
-	// Note: pyzmq performs clone() twice on intialization.
+	// Note: pyzmq performs clone() twice on initialization.
 	return -1
 }
 

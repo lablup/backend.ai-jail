@@ -23,7 +23,7 @@ func (p *PythonPolicy) GetExecAllowance() int {
 }
 
 func (p *PythonPolicy) GetForkAllowance() int {
-	// Note: pyzmq performs clone() twice on intialization.
+	// Note: pyzmq performs clone() twice on initialization.
 	return -1
 }
 

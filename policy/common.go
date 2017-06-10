@@ -20,7 +20,7 @@ func init() {
 	}
 
 	// Following syscalls are intercepted by our ptrace-based tracer.
-	// The tracer will implement its own policies, optinally by inspecting
+	// The tracer will implement its own policies, optionally by inspecting
 	// the arguments in the registers.
 	TracedSyscalls = []string{
 		// 1st param is filename/path
