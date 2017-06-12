@@ -45,6 +45,7 @@ var (
 )
 
 var debug bool = false
+var watch bool = false
 var policyInst policy.SandboxPolicy = nil
 var policyName string
 var childMode bool = false
@@ -175,7 +176,7 @@ loop:
 				// Terminate all my children.
 				// Since we set Setsid: true in SysProcAttr of syscall.ForkExec(),
 				// the signals we receive are NOT automatically delivered to children.
-				// We control the SIGINT/SIGTERM behvaiour gracefully for later
+				// We control the SIGINT/SIGTERM behaviour gracefully for later
 				// extension of Sorna.
 				pgid, _ := syscall.Getpgid(pid)
 				syscall.Kill(pgid, syscall.SIGKILL)
@@ -381,7 +382,7 @@ loop:
 						allow = true
 					}
 					if !allow {
-						if debug {
+						if debug || watch {
 							syscallName, _ := seccomp.ScmpSyscall(syscallId).GetName()
 							color.Set(color.FgRed)
 							l.Printf("blocked syscall %s\n", syscallName)
@@ -416,7 +417,7 @@ loop:
 				case 0:
 					// ignore
 				default:
-					if debug {
+					if debug || watch {
 						color.Set(color.FgRed)
 						l.Printf("Unknown trap cause: %d\n", result.status.TrapCause())
 						color.Unset()
@@ -472,7 +473,8 @@ loop:
 
 func init() {
 	flag.BoolVar(&childMode, "child-mode", false, "Used to run the child mode to initiate tracing.")
-	flag.BoolVar(&debug, "debug", false, "Set the debug mode.")
+	flag.BoolVar(&debug, "debug", false, "Set the debug mode. Shows every possible details of syscalls.")
+	flag.BoolVar(&watch, "watch", false, "Set the watch mode. Shows syscalls blocked by the policy.")
 }
 
 func handleExit() {
@@ -497,6 +499,14 @@ func main() {
 
 	l := log.New(os.Stderr, "", 0)
 	flag.Parse()
+
+	if debug {
+		watch = false
+		l.Printf("Debug mode is set.")
+	}
+	if watch {
+		l.Printf("Watch mode is set.")
+	}
 
 	if !childMode {
 		/* The parent. */
