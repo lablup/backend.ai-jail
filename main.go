@@ -23,7 +23,7 @@ import (
 	"syscall"
 )
 
-type Exit struct { Code int }
+type Exit struct{ Code int }
 
 var (
 	myExecPath, _  = utils.GetExecutable(os.Getpid())
@@ -324,6 +324,7 @@ loop:
 							allow = (targetTgid != os.Getpid() &&
 								targetTid != pid &&
 								targetTid != os.Getpid() &&
+								!(targetTid == 0 && result.pid == pid) &&
 								targetTid != 1)
 						default:
 							allow = true
@@ -335,6 +336,7 @@ loop:
 						case syscall.SIGKILL, syscall.SIGINT, syscall.SIGTERM:
 							allow = (targetPid != pid &&
 								targetPid != os.Getpid() &&
+								!(targetPid == 0 && result.pid == pid) &&
 								targetPid != 1)
 						default:
 							allow = true

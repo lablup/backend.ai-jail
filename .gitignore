@@ -26,3 +26,5 @@ _testmain.go
 
 build*/
 sorna-jail
+
+.*.swp
