@@ -4,6 +4,7 @@ FROM golang:1.8-alpine
 RUN apk add --no-cache build-base git libseccomp-dev linux-headers
 RUN go get github.com/seccomp/libseccomp-golang
 RUN go get github.com/fatih/color
+RUN go get gopkg.in/yaml.v2
 
 # When running this image, mount the working copy root to
 # /go/src/github.com/lablup/sorna-jail

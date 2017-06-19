@@ -1,10 +1,20 @@
 package policy
 
 import (
+	"fmt"
+	"io/ioutil"
+	"log"
 	"path"
+	"gopkg.in/yaml.v2"
 )
 
 type PathOps int
+
+type SyscallConf struct {
+	Traced_Syscalls []string
+	Conditionally_Allowed_Syscalls []string
+	Allowed_Syscalls []string
+}
 
 const (
 	OP_OPEN PathOps = iota
@@ -56,6 +66,23 @@ func GeneratePolicy(exec_path string) (SandboxPolicy, error) {
 	default:
 		return new(DefaultPolicy), nil
 	}
+}
+
+func GeneratePolicyFromYAML(l *log.Logger, policyFile string) string {
+	yamlFile, err := ioutil.ReadFile(policyFile)
+	if err != nil {
+		l.Panic("yamlFile.Get err   #%v ", err)
+	}
+
+	conf := SyscallConf{}
+	err = yaml.Unmarshal(yamlFile, &conf)
+	if err != nil {
+		l.Panic("Unmarshal error: %v", err)
+	}
+	fmt.Println(conf)
+
+	// TODO Generate real sandbox policy instance from conf.
+	return policyFile
 }
 
 // vim: ts=4 sts=4 sw=4 noet
