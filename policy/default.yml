@@ -1,3 +1,15 @@
+whitelist_paths:
+  OP_OPEN: []
+  OP_ACCESS: []
+  OP_EXEC: []
+  OP_STAT: []
+  OP_CHMOD: ["/home/work/", "/tmp/"]
+exec_allowance: 0
+fork_allowance: -1
+max_child_procs: 32
+extra_envs: []
+preserved_env_keys: ["HOME", "PATH", "LANG", "PYENV_ROOT", "PYTHONPATH", "LD_PRELOAD"]
+
 # Following syscalls are intercepted by our ptrace-based tracer.
 # The tracer will implement its own policies, optionally by inspecting
 # the arguments in the registers.
@@ -43,6 +55,7 @@ traced_syscalls:
 
 # Following syscalls are conditionally allowed.
 conditionally_allowed_syscalls:
+  # TODO: how to deal with condition in conf file?
 
 # Following syscalls are blindly allowed.
 # IMPORTANT: ptrace MUST NOT be included!

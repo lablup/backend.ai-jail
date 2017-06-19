@@ -1,19 +1,26 @@
 package policy
 
 import (
-	"fmt"
 	"io/ioutil"
 	"log"
 	"path"
+	"strings"
+
 	"gopkg.in/yaml.v2"
 )
 
 type PathOps int
 
-type SyscallConf struct {
-	Traced_Syscalls []string
-	Conditionally_Allowed_Syscalls []string
-	Allowed_Syscalls []string
+type PolicyConf struct {
+	WhitelistPaths map[string][]string `yaml:"whitelist_paths"`
+	ExecAllowance int `yaml:"exec_allowance"`
+	ForkAllowance int `yaml:"fork_allowance"`
+	MaxChildProcs uint `yaml:"max_child_procs"`
+	ExtraEnvs []string `yaml:"extra_envs"`
+	PreservedEnvKeys []string `yaml:"preserved_env_keys"`
+	TracedSyscalls []string `yaml:"traced_syscalls"`
+	ConditionallyAllowedSyscalls []string `yaml:"conditionally_allowed_syscalls"`
+	AllowedSyscalls []string `yaml:"allowed_syscalls"`
 }
 
 const (
@@ -52,6 +59,54 @@ type SandboxPolicy interface {
 	GetPreservedEnvKeys() []string
 }
 
+// =======================================================================
+// Policy will replace SandboxPolicy after the implementation is finished.
+type Policy struct {
+	conf PolicyConf
+}
+
+func (p *Policy) CheckPathOp(path string, op PathOps, mode int) bool {
+	var allow bool
+	switch op {
+	case OP_CHMOD:
+		allow = false
+		for _, prefix := range WhitelistPaths[op] {
+			if strings.HasPrefix(path, prefix) {
+				allow = true
+				break
+			}
+		}
+	default:
+		allow = true
+	}
+	return allow
+}
+
+func (p *Policy) GetExecAllowance() int {
+	return p.conf.ExecAllowance
+}
+
+func (p *Policy) GetForkAllowance() int {
+	return p.conf.ForkAllowance
+}
+
+func (p *Policy) GetMaxChildProcs() uint {
+	return p.conf.MaxChildProcs
+}
+
+func (p *Policy) CheckPathExecutable(path string) bool {
+	// TODO: always return true currently
+	return true
+}
+
+func (p *Policy) GetExtraEnvs() []string {
+	return p.conf.ExtraEnvs
+}
+
+func (p *Policy) GetPreservedEnvKeys() []string {
+	return p.conf.PreservedEnvKeys
+}
+
 func GeneratePolicy(exec_path string) (SandboxPolicy, error) {
 	_, exec_name := path.Split(exec_path)
 	switch exec_name {
@@ -68,21 +123,35 @@ func GeneratePolicy(exec_path string) (SandboxPolicy, error) {
 	}
 }
 
-func GeneratePolicyFromYAML(l *log.Logger, policyFile string) string {
-	yamlFile, err := ioutil.ReadFile(policyFile)
+func ReadYAMLPolicyFromFile(l *log.Logger, policyFile string, conf *PolicyConf) {
+	yamlData, err := ioutil.ReadFile(policyFile)
 	if err != nil {
-		l.Panic("yamlFile.Get err   #%v ", err)
+		l.Panic("Error in opening yaml file: #%v ", err)
 	}
 
-	conf := SyscallConf{}
-	err = yaml.Unmarshal(yamlFile, &conf)
+	err = yaml.Unmarshal(yamlData, &conf)
 	if err != nil {
-		l.Panic("Unmarshal error: %v", err)
+		l.Panic("Yaml unmarshal error: %v", err)
 	}
-	fmt.Println(conf)
+}
 
-	// TODO Generate real sandbox policy instance from conf.
-	return policyFile
+func GeneratePolicyFromYAML(l *log.Logger, policyFile string) (SandboxPolicy, error) {
+	conf := PolicyConf{}
+	ReadYAMLPolicyFromFile(l, policyFile, &conf)
+
+	WhitelistPaths = map[PathOps][]string{
+		//OP_OPEN: conf.WhitelistPaths["OP_OPEN"],
+		//OP_ACCESS: conf.WhitelistPaths["OP_ACCESS"],
+		//OP_EXEC: conf.WhitelistPaths["OP_EXEC"],
+		//OP_STAT: conf.WhitelistPaths["OP_STAT"],
+		OP_CHMOD: conf.WhitelistPaths["OP_CHMOD"],
+	}
+	TracedSyscalls = conf.TracedSyscalls
+	AllowedSyscalls = conf.AllowedSyscalls
+	//ConditionallyAllowedSyscalls = policy.Conditionally_Allowed_Syscalls
+	
+	// It is OK to return the address of a local variable unlike C.
+	return &Policy{conf}, nil
 }
 
 // vim: ts=4 sts=4 sw=4 noet
