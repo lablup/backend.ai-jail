@@ -9,32 +9,6 @@ import (
 	seccomp "github.com/seccomp/libseccomp-golang"
 )
 
-type PathOps int
-type PolicyConf struct {
-	WhitelistPaths map[string][]string `yaml:"whitelist_paths"`
-	ExecAllowance int `yaml:"exec_allowance"`
-	ForkAllowance int `yaml:"fork_allowance"`
-	MaxChildProcs uint `yaml:"max_child_procs"`
-	ExtraEnvs []string `yaml:"extra_envs"`
-	PreservedEnvKeys []string `yaml:"preserved_env_keys"`
-	TracedSyscalls []string `yaml:"traced_syscalls"`
-	ConditionallyAllowedSyscalls []string `yaml:"conditionally_allowed_syscalls"`
-	AllowedSyscalls []string `yaml:"allowed_syscalls"`
-}
-
-const (
-	OP_OPEN PathOps = iota
-	OP_ACCESS
-	OP_EXEC
-	OP_STAT
-	OP_CHMOD
-)
-
-var TracedSyscalls []string
-var AllowedSyscalls []string
-var ConditionallyAllowedSyscalls map[string]seccomp.ScmpCondition
-var WhitelistPaths map[PathOps][]string
-
 type SandboxPolicy interface {
 	// Should return a boolean representing if access to the path
 	// with the given permission is allowed or not.
@@ -109,21 +83,19 @@ func (p *Policy) GetPreservedEnvKeys() []string {
 	return p.conf.PreservedEnvKeys
 }
 
-func ReadYAMLPolicyFromFile(l *log.Logger, policyFile string, conf *PolicyConf) {
+func GeneratePolicyFromYAML(l *log.Logger, policyFile string) (SandboxPolicy, error) {
+	conf := defaultConf
+
 	yamlData, err := ioutil.ReadFile(policyFile)
 	if err != nil {
-		l.Panic("Error in opening yaml file: #%v ", err)
+		l.Println("No policy is given. Use default config.")
+	} else {
+		// Update default conf with custom config.
+		err = yaml.Unmarshal(yamlData, &conf)
+		if err != nil {
+			l.Panic("Yaml unmarshal error: %v", err)
+		}
 	}
-
-	err = yaml.Unmarshal(yamlData, &conf)
-	if err != nil {
-		l.Panic("Yaml unmarshal error: %v", err)
-	}
-}
-
-func GeneratePolicyFromYAML(l *log.Logger, policyFile string) (SandboxPolicy, error) {
-	conf := PolicyConf{}
-	ReadYAMLPolicyFromFile(l, policyFile, &conf)
 
 	WhitelistPaths = map[PathOps][]string{
 		//OP_OPEN: conf.WhitelistPaths["OP_OPEN"],

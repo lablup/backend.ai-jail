@@ -2,10 +2,11 @@
 
 /*
 Command-line usage:
-	./jail <policy_name> <child_args ...>
+	./jail <child_args ...>  // use default policy
+	./jail -policy <policy_file> <child_args ...>
 
 Example:
-	./jail python3 /bin/sh /home/sorna/run.sh
+	./jail -policy python3.yml /bin/sh /home/sorna/run.sh
 */
 package main
 
@@ -475,7 +476,7 @@ loop:
 
 func init() {
 	flag.BoolVar(&childMode, "child-mode", false, "Used to run the child mode to initiate tracing.")
-	flag.StringVar(&policyFile, "policy", "./policy/default.yml", "Path to policy config file.")
+	flag.StringVar(&policyFile, "policy", "policy.yml", "Path to policy config file.")
 	flag.BoolVar(&debug, "debug", false, "Set the debug mode. Shows every possible details of syscalls.")
 	flag.BoolVar(&watch, "watch", false, "Set the watch mode. Shows syscalls blocked by the policy.")
 }
@@ -531,7 +532,7 @@ func main() {
 		// Locking the OS thread is required to let syscall.Wait4() work correctly
 		// because waitpid() only monitors the caller's direct children, not
 		// siblings' children.
-		args := append([]string{intraJailPath, "-child-mode"}, flag.Args()[0:]...)
+		args := append([]string{intraJailPath, "-child-mode", "-policy", policyFile}, flag.Args()[0:]...)
 		cwd, _ := os.Getwd()
 		envs := utils.FilterEnvs(os.Environ(), policyInst.GetPreservedEnvKeys())
 		envs = append(envs, policyInst.GetExtraEnvs()...)
