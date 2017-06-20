@@ -1,3 +1,7 @@
+# References when you are going to update this file:
+#  - https://github.com/docker/docker/blob/master/docs/security/seccomp.md
+#  - https://filippo.io/linux-syscall-table/
+
 whitelist_paths:
   OP_OPEN: []
   OP_ACCESS: []

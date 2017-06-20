@@ -3,14 +3,13 @@ package policy
 import (
 	"io/ioutil"
 	"log"
-	"path"
 	"strings"
 
 	"gopkg.in/yaml.v2"
+	seccomp "github.com/seccomp/libseccomp-golang"
 )
 
 type PathOps int
-
 type PolicyConf struct {
 	WhitelistPaths map[string][]string `yaml:"whitelist_paths"`
 	ExecAllowance int `yaml:"exec_allowance"`
@@ -30,6 +29,11 @@ const (
 	OP_STAT
 	OP_CHMOD
 )
+
+var TracedSyscalls []string
+var AllowedSyscalls []string
+var ConditionallyAllowedSyscalls map[string]seccomp.ScmpCondition
+var WhitelistPaths map[PathOps][]string
 
 type SandboxPolicy interface {
 	// Should return a boolean representing if access to the path
@@ -59,8 +63,6 @@ type SandboxPolicy interface {
 	GetPreservedEnvKeys() []string
 }
 
-// =======================================================================
-// Policy will replace SandboxPolicy after the implementation is finished.
 type Policy struct {
 	conf PolicyConf
 }
@@ -107,22 +109,6 @@ func (p *Policy) GetPreservedEnvKeys() []string {
 	return p.conf.PreservedEnvKeys
 }
 
-func GeneratePolicy(exec_path string) (SandboxPolicy, error) {
-	_, exec_name := path.Split(exec_path)
-	switch exec_name {
-	case "python-tensorflow":
-		return new(PythonTensorFlowPolicy), nil
-	case "python", "python2", "python3":
-		return new(PythonPolicy), nil
-	case "julia":
-		return new(JuliaPolicy), nil
-	case "git":
-		return new(GitPolicy), nil
-	default:
-		return new(DefaultPolicy), nil
-	}
-}
-
 func ReadYAMLPolicyFromFile(l *log.Logger, policyFile string, conf *PolicyConf) {
 	yamlData, err := ioutil.ReadFile(policyFile)
 	if err != nil {
@@ -148,7 +134,11 @@ func GeneratePolicyFromYAML(l *log.Logger, policyFile string) (SandboxPolicy, er
 	}
 	TracedSyscalls = conf.TracedSyscalls
 	AllowedSyscalls = conf.AllowedSyscalls
-	//ConditionallyAllowedSyscalls = policy.Conditionally_Allowed_Syscalls
+	// TODO: how to read conditionally_allowed_syscalls?
+	ConditionallyAllowedSyscalls = map[string]seccomp.ScmpCondition{
+	// To make it tracee's initial synchronization working
+	//"kill": {1, seccomp.CompareEqual, uint64(syscall.SIGSTOP), 0},
+	}
 	
 	// It is OK to return the address of a local variable unlike C.
 	return &Policy{conf}, nil

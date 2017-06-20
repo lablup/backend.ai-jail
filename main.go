@@ -47,7 +47,7 @@ var (
 var debug bool = false
 var watch bool = false
 var policyInst policy.SandboxPolicy = nil
-var policyName string
+var policyFile string
 var childMode bool = false
 var execCount int = 0
 var forkCount int = 0
@@ -475,6 +475,7 @@ loop:
 
 func init() {
 	flag.BoolVar(&childMode, "child-mode", false, "Used to run the child mode to initiate tracing.")
+	flag.StringVar(&policyFile, "policy", "./policy/default.yml", "Path to policy config file.")
 	flag.BoolVar(&debug, "debug", false, "Set the debug mode. Shows every possible details of syscalls.")
 	flag.BoolVar(&watch, "watch", false, "Set the watch mode. Shows syscalls blocked by the policy.")
 }
@@ -513,13 +514,12 @@ func main() {
 	if !childMode {
 		/* The parent. */
 
-		if flag.NArg() < 2 {
+		if flag.NArg() < 1 {
 			color.Set(color.FgRed)
 			l.Panic("Main: Not enough command-line arguments. See the docs.")
 		}
 
-		policyName := flag.Arg(0)
-		policyInst, err = policy.GeneratePolicy(policyName)
+		policyInst, err = policy.GeneratePolicyFromYAML(l, policyFile)
 		if err != nil {
 			color.Set(color.FgRed)
 			l.Panic("GeneratePolicy: ", err)
@@ -531,7 +531,7 @@ func main() {
 		// Locking the OS thread is required to let syscall.Wait4() work correctly
 		// because waitpid() only monitors the caller's direct children, not
 		// siblings' children.
-		args := append([]string{intraJailPath, "-child-mode"}, flag.Args()[1:]...)
+		args := append([]string{intraJailPath, "-child-mode"}, flag.Args()[0:]...)
 		cwd, _ := os.Getwd()
 		envs := utils.FilterEnvs(os.Environ(), policyInst.GetPreservedEnvKeys())
 		envs = append(envs, policyInst.GetExtraEnvs()...)
@@ -553,6 +553,14 @@ func main() {
 
 	} else {
 		/* The child. */
+
+		// TODO: Other confs except syscalls are not needed in child.
+		// Should we separate conf files in two?
+		policyInst, err = policy.GeneratePolicyFromYAML(l, policyFile)
+		if err != nil {
+			color.Set(color.FgRed)
+			l.Panic("GeneratePolicy: ", err)
+		}
 
 		syscall.RawSyscall(syscall.SYS_PRCTL, syscall.PR_SET_PTRACER, uintptr(os.Getppid()), 0)
 
