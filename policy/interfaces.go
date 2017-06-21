@@ -9,39 +9,11 @@ import (
 	seccomp "github.com/seccomp/libseccomp-golang"
 )
 
-type SandboxPolicy interface {
-	// Should return a boolean representing if access to the path
-	// with the given permission is allowed or not.
-	CheckPathOp(path string, op PathOps, mode int) bool
-
-	// Should return the number of maximum execv() syscalls.
-	// If it returns -1, no limit is imposed.
-	GetExecAllowance() int
-
-	// Should return the number of maximum fork()/clone() syscalls.
-	// If it returns -1, no limit is imposed.
-	GetForkAllowance() int
-
-	// Should return the maximum number of child processes and threads.
-	GetMaxChildProcs() uint
-
-	// Should return a boolean representing if executing the executable file in
-	// the given path.  Here executing means calling execve().
-	CheckPathExecutable(path string) bool
-
-	// Should return additional environment key-value pairs.
-	// They will be merged to environment variables of the user process.
-	GetExtraEnvs() []string
-
-	// Should return which environment variables are kept intact.
-	GetPreservedEnvKeys() []string
-}
-
-type Policy struct {
+type SandboxPolicy struct {
 	conf PolicyConf
 }
 
-func (p *Policy) CheckPathOp(path string, op PathOps, mode int) bool {
+func (p *SandboxPolicy) CheckPathOp(path string, op PathOps, mode int) bool {
 	var allow bool
 	switch op {
 	case OP_CHMOD:
@@ -58,28 +30,28 @@ func (p *Policy) CheckPathOp(path string, op PathOps, mode int) bool {
 	return allow
 }
 
-func (p *Policy) GetExecAllowance() int {
+func (p *SandboxPolicy) GetExecAllowance() int {
 	return p.conf.ExecAllowance
 }
 
-func (p *Policy) GetForkAllowance() int {
+func (p *SandboxPolicy) GetForkAllowance() int {
 	return p.conf.ForkAllowance
 }
 
-func (p *Policy) GetMaxChildProcs() uint {
+func (p *SandboxPolicy) GetMaxChildProcs() uint {
 	return p.conf.MaxChildProcs
 }
 
-func (p *Policy) CheckPathExecutable(path string) bool {
+func (p *SandboxPolicy) CheckPathExecutable(path string) bool {
 	// TODO: always return true currently
 	return true
 }
 
-func (p *Policy) GetExtraEnvs() []string {
+func (p *SandboxPolicy) GetExtraEnvs() []string {
 	return p.conf.ExtraEnvs
 }
 
-func (p *Policy) GetPreservedEnvKeys() []string {
+func (p *SandboxPolicy) GetPreservedEnvKeys() []string {
 	return p.conf.PreservedEnvKeys
 }
 
@@ -113,7 +85,7 @@ func GeneratePolicyFromYAML(l *log.Logger, policyFile string) (SandboxPolicy, er
 	}
 	
 	// It is OK to return the address of a local variable unlike C.
-	return &Policy{conf}, nil
+	return SandboxPolicy{conf}, nil
 }
 
 // vim: ts=4 sts=4 sw=4 noet

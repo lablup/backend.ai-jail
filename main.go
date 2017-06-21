@@ -47,7 +47,7 @@ var (
 
 var debug bool = false
 var watch bool = false
-var policyInst policy.SandboxPolicy = nil
+var policyInst policy.SandboxPolicy
 var policyFile string
 var childMode bool = false
 var execCount int = 0
