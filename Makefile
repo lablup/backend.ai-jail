@@ -13,8 +13,6 @@ musllinux:
 	mv sorna-jail build-musllinux/jail
 
 inside-container:
-	go get -u github.com/fatih/color
-	go get -u github.com/seccomp/libseccomp-golang
 	go build -v
 
 prepare-dev:

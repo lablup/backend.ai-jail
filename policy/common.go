@@ -1,20 +1,15 @@
 package policy
 
-import (
-	seccomp "github.com/seccomp/libseccomp-golang"
-)
-
 type PathOps int
 type PolicyConf struct {
-	WhitelistPaths map[string][]string `yaml:"whitelist_paths"`
-	ExecAllowance int `yaml:"exec_allowance"`
-	ForkAllowance int `yaml:"fork_allowance"`
-	MaxChildProcs uint `yaml:"max_child_procs"`
-	ExtraEnvs []string `yaml:"extra_envs"`
-	PreservedEnvKeys []string `yaml:"preserved_env_keys"`
-	TracedSyscalls []string `yaml:"traced_syscalls"`
-	ConditionallyAllowedSyscalls []string `yaml:"conditionally_allowed_syscalls"`
-	AllowedSyscalls []string `yaml:"allowed_syscalls"`
+	WhitelistPaths   map[string][]string `yaml:"whitelist_paths"`
+	ExecAllowance    int                 `yaml:"exec_allowance"`
+	ForkAllowance    int                 `yaml:"fork_allowance"`
+	MaxChildProcs    uint                `yaml:"max_child_procs"`
+	ExtraEnvs        []string            `yaml:"extra_envs"`
+	PreservedEnvKeys []string            `yaml:"preserved_env_keys"`
+	TracedSyscalls   []string            `yaml:"traced_syscalls"`
+	AllowedSyscalls  []string            `yaml:"allowed_syscalls"`
 }
 
 const (
@@ -28,7 +23,6 @@ const (
 var defaultConf PolicyConf
 var TracedSyscalls []string
 var AllowedSyscalls []string
-var ConditionallyAllowedSyscalls map[string]seccomp.ScmpCondition
 var WhitelistPaths map[PathOps][]string
 
 // References when you are going to update this file:
@@ -93,11 +87,7 @@ func init() {
 		"execve",
 		// "kill" will be added by intra-jail
 	}
-	// Following syscalls are conditionally allowed.
-	//defaultConf.ConditionallyAllowedSyscalls = map[string]seccomp.ScmpCondition{
-	//// To make it tracee's initial synchronization working
-	////"kill": {1, seccomp.CompareEqual, uint64(syscall.SIGSTOP), 0},
-	//}
+
 	// Following syscalls are blindly allowed.
 	// IMPORTANT: ptrace MUST NOT be included!
 	defaultConf.AllowedSyscalls = []string{

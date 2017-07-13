@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v2"
-	seccomp "github.com/seccomp/libseccomp-golang"
 )
 
 type SandboxPolicy struct {
@@ -78,12 +77,7 @@ func GeneratePolicyFromYAML(l *log.Logger, policyFile string) (SandboxPolicy, er
 	}
 	TracedSyscalls = conf.TracedSyscalls
 	AllowedSyscalls = conf.AllowedSyscalls
-	// TODO: how to read conditionally_allowed_syscalls?
-	ConditionallyAllowedSyscalls = map[string]seccomp.ScmpCondition{
-	// To make it tracee's initial synchronization working
-	//"kill": {1, seccomp.CompareEqual, uint64(syscall.SIGSTOP), 0},
-	}
-	
+
 	// It is OK to return the address of a local variable unlike C.
 	return SandboxPolicy{conf}, nil
 }

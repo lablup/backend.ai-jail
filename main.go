@@ -598,10 +598,6 @@ func main() {
 			scId, _ := seccomp.GetSyscallFromNameByArch(syscallName, arch)
 			laterFilter.AddRuleExact(scId, seccomp.ActTrace)
 		}
-		for syscallName, cond := range policy.ConditionallyAllowedSyscalls {
-			syscallId, _ := seccomp.GetSyscallFromNameByArch(syscallName, arch)
-			laterFilter.AddRuleConditional(syscallId, seccomp.ActAllow, []seccomp.ScmpCondition{cond})
-		}
 		laterFilter.SetNoNewPrivsBit(true)
 
 		// Inform the parent that I'm ready to continue.
