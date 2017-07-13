@@ -8,7 +8,7 @@ whitelist_paths:
   OP_EXEC: ["*"]
   OP_STAT: ["*"]
   OP_CHMOD: ["/home/work/*", "/tmp/*"]
-exec_allowance: 0
+exec_allowance: -1
 fork_allowance: -1
 max_child_procs: 32
 extra_envs: []
