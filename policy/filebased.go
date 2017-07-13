@@ -3,9 +3,8 @@ package policy
 import (
 	"io/ioutil"
 	"log"
-	"strings"
 
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type FileBasedPolicy struct {
@@ -14,22 +13,12 @@ type FileBasedPolicy struct {
 }
 
 func (p FileBasedPolicy) CheckPathOp(path string, op PathOps, mode int) bool {
-	var allow bool
-	switch op {
-	case OP_CHMOD:
-		allow = false
-		for _, prefix := range p.conf.WhitelistPaths[op] {
-			if strings.HasPrefix(path, prefix) {
-				allow = true
-				break
-			}
+	for _, matcher := range p.conf.WhitelistPaths[op] {
+		if matcher.Match(path) {
+			return true
 		}
-	case OP_EXEC:
-		allow = true
-	default:
-		allow = true
 	}
-	return allow
+	return false
 }
 
 func (p FileBasedPolicy) GetExecAllowance() int {

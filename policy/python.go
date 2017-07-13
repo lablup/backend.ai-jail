@@ -1,21 +1,15 @@
 package policy
 
-import (
-	"strings"
-)
-
 type PythonPolicy struct {
 }
 
 func (p PythonPolicy) CheckPathOp(path string, op PathOps, mode int) bool {
-	var allow bool
-	switch op {
-	case OP_CHMOD:
-		allow = strings.HasPrefix(path, "/home/work/")
-	default:
-		allow = true
+	for _, matcher := range defaultConf.WhitelistPaths[op] {
+		if matcher.Match(path) {
+			return true
+		}
 	}
-	return allow
+	return false
 }
 
 func (p PythonPolicy) GetExecAllowance() int {

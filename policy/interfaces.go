@@ -2,6 +2,8 @@ package policy
 
 import (
 	"fmt"
+
+	glob "github.com/gobwas/glob"
 )
 
 type SandboxPolicy interface {
@@ -39,15 +41,33 @@ func (o *PathOps) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
+type PatternMatcher struct {
+	glob.Glob
+}
+
+func (p *PatternMatcher) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var raw string
+	var err error
+	if err = unmarshal(&raw); err != nil {
+		return err
+	}
+	var g glob.Glob
+	if g, err = glob.Compile(raw); err != nil {
+		return err
+	}
+	*p = PatternMatcher{g}
+	return nil
+}
+
 type PolicyConf struct {
-	WhitelistPaths   map[PathOps][]string `yaml:"whitelist_paths"`
-	ExecAllowance    int                  `yaml:"exec_allowance"`
-	ForkAllowance    int                  `yaml:"fork_allowance"`
-	MaxChildProcs    uint                 `yaml:"max_child_procs"`
-	ExtraEnvs        []string             `yaml:"extra_envs"`
-	PreservedEnvKeys []string             `yaml:"preserved_env_keys"`
-	TracedSyscalls   []string             `yaml:"traced_syscalls"`
-	AllowedSyscalls  []string             `yaml:"allowed_syscalls"`
+	WhitelistPaths   map[PathOps][]PatternMatcher `yaml:"whitelist_paths"`
+	ExecAllowance    int                          `yaml:"exec_allowance"`
+	ForkAllowance    int                          `yaml:"fork_allowance"`
+	MaxChildProcs    uint                         `yaml:"max_child_procs"`
+	ExtraEnvs        []string                     `yaml:"extra_envs"`
+	PreservedEnvKeys []string                     `yaml:"preserved_env_keys"`
+	TracedSyscalls   []string                     `yaml:"traced_syscalls"`
+	AllowedSyscalls  []string                     `yaml:"allowed_syscalls"`
 }
 
 var defaultConf PolicyConf
@@ -64,12 +84,12 @@ func init() {
 		"OP_STAT":   OP_STAT,
 		"OP_CHMOD":  OP_CHMOD,
 	}
-	defaultConf.WhitelistPaths = map[PathOps][]string{
-		OP_OPEN:   []string{},
-		OP_ACCESS: []string{},
-		OP_EXEC:   []string{},
-		OP_STAT:   []string{},
-		OP_CHMOD:  []string{"/home/work/", "/tmp/"},
+	defaultConf.WhitelistPaths = map[PathOps][]PatternMatcher{
+		OP_OPEN:   []PatternMatcher{PatternMatcher{glob.MustCompile("*")}},
+		OP_ACCESS: []PatternMatcher{PatternMatcher{glob.MustCompile("*")}},
+		OP_EXEC:   []PatternMatcher{PatternMatcher{glob.MustCompile("*")}},
+		OP_STAT:   []PatternMatcher{PatternMatcher{glob.MustCompile("*")}},
+		OP_CHMOD:  []PatternMatcher{PatternMatcher{glob.MustCompile("/home/work/*")}, PatternMatcher{glob.MustCompile("/tmp/*")}},
 	}
 	defaultConf.ExecAllowance = 0
 	defaultConf.ForkAllowance = -1

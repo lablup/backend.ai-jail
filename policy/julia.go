@@ -1,27 +1,15 @@
 package policy
 
-import (
-	"strings"
-)
-
 type JuliaPolicy struct {
 }
 
 func (p JuliaPolicy) CheckPathOp(path string, op PathOps, mode int) bool {
-	var allow bool
-	switch op {
-	case OP_CHMOD:
-		allow = false
-		for _, prefix := range defaultConf.WhitelistPaths[op] {
-			if strings.HasPrefix(path, prefix) {
-				allow = true
-				break
-			}
+	for _, matcher := range defaultConf.WhitelistPaths[op] {
+		if matcher.Match(path) {
+			return true
 		}
-	default:
-		allow = true
 	}
-	return allow
+	return false
 }
 
 func (p JuliaPolicy) GetExecAllowance() int {
