@@ -38,5 +38,3 @@ func (p PythonPolicy) GetPreservedEnvKeys() []string {
 		"OPENBLAS_NUM_THREADS",
 	}
 }
-
-// vim: ts=4 sts=4 sw=4 noet

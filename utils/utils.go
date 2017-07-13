@@ -1,11 +1,11 @@
 package utils
 
 import (
+	"bytes"
 	"fmt"
 	"os"
-	"bytes"
-	"strings"
 	"path"
+	"strings"
 	"syscall"
 )
 
@@ -79,6 +79,3 @@ func GetAbsPathAs(path_ string, pid int) string {
 		return path.Join(pwd, path_)
 	}
 }
-
-
-// vim: ts=4 sts=4 sw=4 noet

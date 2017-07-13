@@ -67,5 +67,3 @@ func GeneratePolicyFromYAML(l *log.Logger, policyFile string) (FileBasedPolicy, 
 	// It is OK to return the address of a local variable unlike C.
 	return FileBasedPolicy{policyFile, conf}, nil
 }
-
-// vim: ts=4 sts=4 sw=4 noet
