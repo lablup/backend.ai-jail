@@ -379,14 +379,14 @@ loop:
 						path = utils.GetAbsPathAs(path, result.pid)
 						mode := int(regs.Rdx)
 						allow = policyInst.CheckPathOp(path, policy.OP_CHMOD, mode)
-						extraInfo = path
+						extraInfo = fmt.Sprintf("%s 0o%o", path, mode)
 					case id_Chmod:
 						pathPtr := uintptr(regs.Rdi)
 						path := utils.ReadString(result.pid, pathPtr)
 						path = utils.GetAbsPathAs(path, result.pid)
 						mode := int(regs.Rsi)
 						allow = policyInst.CheckPathOp(path, policy.OP_CHMOD, mode)
-						extraInfo = path
+						extraInfo = fmt.Sprintf("%s 0o%o", path, mode)
 					default:
 						allow = true
 					}
