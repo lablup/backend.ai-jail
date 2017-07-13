@@ -273,6 +273,7 @@ loop:
 
 				switch eventCause {
 				case PTRACE_EVENT_SECCOMP:
+					var extraInfo string = ""
 					allow := true
 					// Linux syscall convention for x86_64 arch:
 					//  - rax: syscall number
@@ -364,23 +365,27 @@ loop:
 						// rsi is flags
 						mode := int(regs.Rdx)
 						allow = policyInst.CheckPathOp(path, policy.OP_OPEN, mode)
+						extraInfo = path
 					case id_Access:
 						pathPtr := uintptr(regs.Rdi)
 						path := utils.ReadString(result.pid, pathPtr)
 						mode := int(regs.Rsi)
 						allow = policyInst.CheckPathOp(path, policy.OP_ACCESS, mode)
+						extraInfo = path
 					case id_Fchmodat:
 						pathPtr := uintptr(regs.Rsi)
 						path := utils.ReadString(result.pid, pathPtr)
 						path = utils.GetAbsPathAs(path, result.pid)
 						mode := int(regs.Rdx)
 						allow = policyInst.CheckPathOp(path, policy.OP_CHMOD, mode)
+						extraInfo = path
 					case id_Chmod:
 						pathPtr := uintptr(regs.Rdi)
 						path := utils.ReadString(result.pid, pathPtr)
 						path = utils.GetAbsPathAs(path, result.pid)
 						mode := int(regs.Rsi)
 						allow = policyInst.CheckPathOp(path, policy.OP_CHMOD, mode)
+						extraInfo = path
 					default:
 						allow = true
 					}
@@ -388,13 +393,20 @@ loop:
 						if debug || watch {
 							syscallName, _ := seccomp.ScmpSyscall(syscallId).GetName()
 							color.Set(color.FgRed)
-							l.Printf("blocked syscall %s\n", syscallName)
+							if extraInfo != "" {
+								l.Printf("blocked syscall %s (%s)", syscallName, extraInfo)
+							} else {
+								l.Printf("blocked syscall %s", syscallName)
+							}
 							color.Unset()
 						}
-						// Skip the system call with permission error
-						regs.Orig_rax = 0xFFFFFFFFFFFFFFFF // -1
-						regs.Rax = 0xFFFFFFFFFFFFFFFF - uint64(syscall.EPERM) + 1
-						syscall.PtraceSetRegs(result.pid, &regs)
+						// If we are not in the watch mode...
+						if !watch {
+							// Block the system call with permission error
+							regs.Orig_rax = 0xFFFFFFFFFFFFFFFF // -1
+							regs.Rax = 0xFFFFFFFFFFFFFFFF - uint64(syscall.EPERM) + 1
+							syscall.PtraceSetRegs(result.pid, &regs)
+						}
 					} else {
 						if debug {
 							syscallName, _ := seccomp.ScmpSyscall(syscallId).GetName()
@@ -509,7 +521,9 @@ func main() {
 		l.Printf("Debug mode is set.")
 	}
 	if watch {
-		l.Printf("Watch mode is set.")
+		color.Set(color.FgYellow)
+		l.Printf("WATCH MODE: all syscalls are ALLOWED but it shows which ones will be blocked by the current policy.")
+		color.Unset()
 	}
 
 	if !childMode {
