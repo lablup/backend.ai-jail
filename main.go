@@ -12,6 +12,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/fatih/color"
 	"github.com/lablup/sorna-jail/policy"
 	"github.com/lablup/sorna-jail/utils"
@@ -356,12 +357,11 @@ loop:
 							allow = (maxExec == -1 || execCount < maxExec)
 							execCount++
 						}
-						if debug {
-							l.Printf("execve owner: %s\n", execPath)
-						}
+						extraInfo = fmt.Sprintf("execve from %s", execPath)
 					case id_Open:
 						pathPtr := uintptr(regs.Rdi)
 						path := utils.ReadString(result.pid, pathPtr)
+						path = utils.GetAbsPathAs(path, result.pid)
 						// rsi is flags
 						mode := int(regs.Rdx)
 						allow = policyInst.CheckPathOp(path, policy.OP_OPEN, mode)
@@ -369,6 +369,7 @@ loop:
 					case id_Access:
 						pathPtr := uintptr(regs.Rdi)
 						path := utils.ReadString(result.pid, pathPtr)
+						path = utils.GetAbsPathAs(path, result.pid)
 						mode := int(regs.Rsi)
 						allow = policyInst.CheckPathOp(path, policy.OP_ACCESS, mode)
 						extraInfo = path
@@ -411,7 +412,11 @@ loop:
 						if debug {
 							syscallName, _ := seccomp.ScmpSyscall(syscallId).GetName()
 							color.Set(color.FgGreen)
-							l.Printf("allowed syscall %s\n", syscallName)
+							if extraInfo != "" {
+								l.Printf("allowed syscall %s (%s)", syscallName, extraInfo)
+							} else {
+								l.Printf("allowed syscall %s", syscallName)
+							}
 							color.Unset()
 						}
 					}
@@ -518,7 +523,9 @@ func main() {
 
 	if debug {
 		watch = false
-		l.Printf("Debug mode is set.")
+		color.Set(color.FgYellow)
+		l.Printf("DEBUG MODE: showing all details")
+		color.Unset()
 	}
 	if watch {
 		color.Set(color.FgYellow)

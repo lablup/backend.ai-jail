@@ -89,7 +89,10 @@ func init() {
 		OP_ACCESS: []PatternMatcher{PatternMatcher{glob.MustCompile("*")}},
 		OP_EXEC:   []PatternMatcher{PatternMatcher{glob.MustCompile("*")}},
 		OP_STAT:   []PatternMatcher{PatternMatcher{glob.MustCompile("*")}},
-		OP_CHMOD:  []PatternMatcher{PatternMatcher{glob.MustCompile("/home/work/*")}, PatternMatcher{glob.MustCompile("/tmp/*")}},
+		OP_CHMOD: []PatternMatcher{
+			PatternMatcher{glob.MustCompile("/home/work/*")},
+			PatternMatcher{glob.MustCompile("/tmp/*")},
+		},
 	}
 	defaultConf.ExecAllowance = 0
 	defaultConf.ForkAllowance = -1
