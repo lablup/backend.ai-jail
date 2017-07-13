@@ -1,16 +1,8 @@
 package policy
 
+import "fmt"
+
 type PathOps int
-type PolicyConf struct {
-	WhitelistPaths   map[string][]string `yaml:"whitelist_paths"`
-	ExecAllowance    int                 `yaml:"exec_allowance"`
-	ForkAllowance    int                 `yaml:"fork_allowance"`
-	MaxChildProcs    uint                `yaml:"max_child_procs"`
-	ExtraEnvs        []string            `yaml:"extra_envs"`
-	PreservedEnvKeys []string            `yaml:"preserved_env_keys"`
-	TracedSyscalls   []string            `yaml:"traced_syscalls"`
-	AllowedSyscalls  []string            `yaml:"allowed_syscalls"`
-}
 
 const (
 	OP_OPEN PathOps = iota
@@ -20,20 +12,51 @@ const (
 	OP_CHMOD
 )
 
+var pathOpsNameMap map[string]PathOps
+
+func (o *PathOps) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var raw string
+	if err := unmarshal(&raw); err != nil {
+		return err
+	}
+	var ok bool
+	if *o, ok = pathOpsNameMap[raw]; !ok {
+		return fmt.Errorf("invalid path operation name: %s", raw)
+	}
+	return nil
+}
+
+type PolicyConf struct {
+	WhitelistPaths   map[PathOps][]string `yaml:"whitelist_paths"`
+	ExecAllowance    int                  `yaml:"exec_allowance"`
+	ForkAllowance    int                  `yaml:"fork_allowance"`
+	MaxChildProcs    uint                 `yaml:"max_child_procs"`
+	ExtraEnvs        []string             `yaml:"extra_envs"`
+	PreservedEnvKeys []string             `yaml:"preserved_env_keys"`
+	TracedSyscalls   []string             `yaml:"traced_syscalls"`
+	AllowedSyscalls  []string             `yaml:"allowed_syscalls"`
+}
+
 var defaultConf PolicyConf
-var TracedSyscalls []string
-var AllowedSyscalls []string
-var WhitelistPaths map[PathOps][]string
 
 // References when you are going to update this file:
 //  - https://github.com/docker/docker/blob/master/docs/security/seccomp.md
 //  - https://filippo.io/linux-syscall-table/
 
 func init() {
-	// Fill in default configurations.
-
-	defaultConf.WhitelistPaths = map[string][]string{
-		"OP_CHMOD": []string{"/home/work/", "/tmp/"},
+	pathOpsNameMap = map[string]PathOps{
+		"OP_OPEN":   OP_OPEN,
+		"OP_ACCESS": OP_ACCESS,
+		"OP_EXEC":   OP_EXEC,
+		"OP_STAT":   OP_STAT,
+		"OP_CHMOD":  OP_CHMOD,
+	}
+	defaultConf.WhitelistPaths = map[PathOps][]string{
+		OP_OPEN:   []string{},
+		OP_ACCESS: []string{},
+		OP_EXEC:   []string{},
+		OP_STAT:   []string{},
+		OP_CHMOD:  []string{"/home/work/", "/tmp/"},
 	}
 	defaultConf.ExecAllowance = 0
 	defaultConf.ForkAllowance = -1

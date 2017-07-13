@@ -7,12 +7,12 @@ import (
 type JuliaPolicy struct {
 }
 
-func (p *JuliaPolicy) CheckPathOp(path string, op PathOps, mode int) bool {
+func (p JuliaPolicy) CheckPathOp(path string, op PathOps, mode int) bool {
 	var allow bool
 	switch op {
 	case OP_CHMOD:
 		allow = false
-		for _, prefix := range WhitelistPaths[op] {
+		for _, prefix := range defaultConf.WhitelistPaths[op] {
 			if strings.HasPrefix(path, prefix) {
 				allow = true
 				break
@@ -24,27 +24,23 @@ func (p *JuliaPolicy) CheckPathOp(path string, op PathOps, mode int) bool {
 	return allow
 }
 
-func (p *JuliaPolicy) GetExecAllowance() int {
+func (p JuliaPolicy) GetExecAllowance() int {
 	return 0
 }
 
-func (p *JuliaPolicy) GetForkAllowance() int {
+func (p JuliaPolicy) GetForkAllowance() int {
 	return -1
 }
 
-func (p *JuliaPolicy) GetMaxChildProcs() uint {
+func (p JuliaPolicy) GetMaxChildProcs() uint {
 	return 32
 }
 
-func (p *JuliaPolicy) CheckPathExecutable(path string) bool {
-	return true
-}
-
-func (p *JuliaPolicy) GetExtraEnvs() []string {
+func (p JuliaPolicy) GetExtraEnvs() []string {
 	return []string{}
 }
 
-func (p *JuliaPolicy) GetPreservedEnvKeys() []string {
+func (p JuliaPolicy) GetPreservedEnvKeys() []string {
 	return []string{
 		"HOME", "PATH", "LANG",
 		"PYENV_ROOT", "PYTHONPATH",

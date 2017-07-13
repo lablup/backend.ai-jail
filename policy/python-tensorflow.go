@@ -7,12 +7,12 @@ import (
 type PythonTensorFlowPolicy struct {
 }
 
-func (p *PythonTensorFlowPolicy) CheckPathOp(path string, op PathOps, mode int) bool {
+func (p PythonTensorFlowPolicy) CheckPathOp(path string, op PathOps, mode int) bool {
 	var allow bool
 	switch op {
 	case OP_CHMOD:
 		allow = false
-		for _, prefix := range WhitelistPaths[op] {
+		for _, prefix := range defaultConf.WhitelistPaths[op] {
 			if strings.HasPrefix(path, prefix) {
 				allow = true
 				break
@@ -24,29 +24,24 @@ func (p *PythonTensorFlowPolicy) CheckPathOp(path string, op PathOps, mode int) 
 	return allow
 }
 
-func (p *PythonTensorFlowPolicy) GetExecAllowance() int {
+func (p PythonTensorFlowPolicy) GetExecAllowance() int {
 	return 0
 }
 
-func (p *PythonTensorFlowPolicy) GetForkAllowance() int {
+func (p PythonTensorFlowPolicy) GetForkAllowance() int {
 	// Note: pyzmq performs clone() twice on initialization.
 	return -1
 }
 
-func (p *PythonTensorFlowPolicy) GetMaxChildProcs() uint {
+func (p PythonTensorFlowPolicy) GetMaxChildProcs() uint {
 	return 32
 }
 
-func (p *PythonTensorFlowPolicy) CheckPathExecutable(path string) bool {
-	// TODO: implement
-	return true
-}
-
-func (p *PythonTensorFlowPolicy) GetExtraEnvs() []string {
+func (p PythonTensorFlowPolicy) GetExtraEnvs() []string {
 	return []string{}
 }
 
-func (p *PythonTensorFlowPolicy) GetPreservedEnvKeys() []string {
+func (p PythonTensorFlowPolicy) GetPreservedEnvKeys() []string {
 	return []string{
 		"HOME", "PATH", "LANG",
 		"PYENV_ROOT", "PYTHONPATH",

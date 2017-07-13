@@ -348,7 +348,7 @@ loop:
 							allow = true
 						} else if execPath == intraJailPath {
 							allow = true
-						} else if policyInst.CheckPathExecutable(execPath) {
+						} else if policyInst.CheckPathOp(execPath, policy.OP_EXEC, 0) {
 							allow = true
 						} else {
 							maxExec := policyInst.GetExecAllowance()
@@ -477,7 +477,7 @@ loop:
 func init() {
 	flag.BoolVar(&childMode, "child-mode", false, "Used to run the child mode to initiate tracing.")
 	flag.StringVar(&policyFile, "policy", "policy.yml", "Path to policy config file.")
-	flag.BoolVar(&debug, "debug", false, "Set the debug mode. Shows every possible details of syscalls.")
+	flag.BoolVar(&debug, "debug", false, "Set the debug mode. Shows every detail of syscalls.")
 	flag.BoolVar(&watch, "watch", false, "Set the watch mode. Shows syscalls blocked by the policy.")
 }
 
@@ -532,7 +532,12 @@ func main() {
 		// Locking the OS thread is required to let syscall.Wait4() work correctly
 		// because waitpid() only monitors the caller's direct children, not
 		// siblings' children.
-		args := append([]string{intraJailPath, "-child-mode", "-policy", policyFile}, flag.Args()[0:]...)
+		args := append([]string{
+			intraJailPath,
+			"-child-mode",
+			"-policy",
+			policyInst.(policy.FileBasedPolicy).FileName,
+		}, flag.Args()[0:]...)
 		cwd, _ := os.Getwd()
 		envs := utils.FilterEnvs(os.Environ(), policyInst.GetPreservedEnvKeys())
 		envs = append(envs, policyInst.GetExtraEnvs()...)
@@ -585,11 +590,11 @@ func main() {
 
 		arch, _ := seccomp.GetNativeArch()
 		laterFilter, _ := seccomp.NewFilter(seccomp.ActErrno.SetReturnCode(int16(syscall.EPERM)))
-		for _, syscallName := range policy.AllowedSyscalls {
+		for _, syscallName := range policyInst.GetAllowedSyscalls() {
 			syscallId, _ := seccomp.GetSyscallFromNameByArch(syscallName, arch)
 			laterFilter.AddRuleExact(syscallId, seccomp.ActAllow)
 		}
-		for _, syscallName := range policy.TracedSyscalls {
+		for _, syscallName := range policyInst.GetTracedSyscalls() {
 			syscallId, _ := seccomp.GetSyscallFromNameByArch(syscallName, arch)
 			laterFilter.AddRuleExact(syscallId, seccomp.ActTrace)
 		}

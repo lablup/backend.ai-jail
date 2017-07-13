@@ -7,7 +7,7 @@ import (
 type PythonPolicy struct {
 }
 
-func (p *PythonPolicy) CheckPathOp(path string, op PathOps, mode int) bool {
+func (p PythonPolicy) CheckPathOp(path string, op PathOps, mode int) bool {
 	var allow bool
 	switch op {
 	case OP_CHMOD:
@@ -18,29 +18,24 @@ func (p *PythonPolicy) CheckPathOp(path string, op PathOps, mode int) bool {
 	return allow
 }
 
-func (p *PythonPolicy) GetExecAllowance() int {
+func (p PythonPolicy) GetExecAllowance() int {
 	return 0
 }
 
-func (p *PythonPolicy) GetForkAllowance() int {
+func (p PythonPolicy) GetForkAllowance() int {
 	// Note: pyzmq performs clone() twice on initialization.
 	return -1
 }
 
-func (p *PythonPolicy) GetMaxChildProcs() uint {
+func (p PythonPolicy) GetMaxChildProcs() uint {
 	return 32
 }
 
-func (p *PythonPolicy) CheckPathExecutable(path string) bool {
-	// TODO: implement
-	return true
-}
-
-func (p *PythonPolicy) GetExtraEnvs() []string {
+func (p PythonPolicy) GetExtraEnvs() []string {
 	return []string{}
 }
 
-func (p *PythonPolicy) GetPreservedEnvKeys() []string {
+func (p PythonPolicy) GetPreservedEnvKeys() []string {
 	return []string{
 		"HOME", "PATH", "LANG",
 		"PYENV_ROOT", "PYTHONPATH",
