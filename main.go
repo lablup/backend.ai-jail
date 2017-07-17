@@ -562,6 +562,14 @@ func main() {
 		cwd, _ := os.Getwd()
 		envs := utils.FilterEnvs(os.Environ(), policyInst.GetPreservedEnvKeys())
 		envs = append(envs, policyInst.GetExtraEnvs()...)
+		if debug {
+			color.Set(color.FgBlue)
+			l.Printf("Environment:")
+			for _, e := range envs {
+				l.Println(e)
+			}
+			color.Unset()
+		}
 
 		var pid int
 		pid, err = syscall.ForkExec(args[0], args, &syscall.ProcAttr{

@@ -1,8 +1,6 @@
 package policy
 
 import (
-	"fmt"
-
 	glob "github.com/gobwas/glob"
 )
 
@@ -29,52 +27,11 @@ const (
 
 var pathOpsNameMap map[string]PathOps
 
-func (o *PathOps) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var raw string
-	if err := unmarshal(&raw); err != nil {
-		return err
-	}
-	var ok bool
-	if *o, ok = pathOpsNameMap[raw]; !ok {
-		return fmt.Errorf("invalid path operation name: %s", raw)
-	}
-	return nil
-}
-
 type PatternMatcher struct {
 	glob.Glob
 }
 
-func (p *PatternMatcher) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var raw string
-	var err error
-	if err = unmarshal(&raw); err != nil {
-		return err
-	}
-	var g glob.Glob
-	if g, err = glob.Compile(raw); err != nil {
-		return err
-	}
-	*p = PatternMatcher{g}
-	return nil
-}
-
-type PolicyConf struct {
-	WhitelistPaths   map[PathOps][]PatternMatcher `yaml:"whitelist_paths"`
-	ExecAllowance    int                          `yaml:"exec_allowance"`
-	ForkAllowance    int                          `yaml:"fork_allowance"`
-	MaxChildProcs    uint                         `yaml:"max_child_procs"`
-	ExtraEnvs        []string                     `yaml:"extra_envs"`
-	PreservedEnvKeys []string                     `yaml:"preserved_env_keys"`
-	TracedSyscalls   []string                     `yaml:"traced_syscalls"`
-	AllowedSyscalls  []string                     `yaml:"allowed_syscalls"`
-}
-
 var defaultConf PolicyConf
-
-// References when you are going to update this file:
-//  - https://github.com/docker/docker/blob/master/docs/security/seccomp.md
-//  - https://filippo.io/linux-syscall-table/
 
 func init() {
 	pathOpsNameMap = map[string]PathOps{
