@@ -493,7 +493,7 @@ loop:
 
 func init() {
 	flag.BoolVar(&childMode, "child-mode", false, "Used to run the child mode to initiate tracing.")
-	flag.StringVar(&policyFile, "policy", "policy.yml", "Path to policy config file.")
+	flag.StringVar(&policyFile, "policy", "[default]", "Path to policy config file. If set \"[default]\", it uses the embedded default policy.")
 	flag.BoolVar(&debug, "debug", false, "Set the debug mode. Shows every detail of syscalls.")
 	flag.BoolVar(&watch, "watch", false, "Set the watch mode. Shows syscalls blocked by the policy.")
 }

@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"log"
 
+	"github.com/fatih/color"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -52,15 +53,22 @@ func (p FileBasedPolicy) GetAllowedSyscalls() []string {
 func GeneratePolicyFromYAML(l *log.Logger, policyFile string) (FileBasedPolicy, error) {
 	var conf PolicyConf
 
-	yamlData, err := ioutil.ReadFile(policyFile)
-	if err != nil {
-		l.Println("Cannot read the policy file. Falling back to default policy...")
+	if policyFile == "[default]" {
 		conf = defaultConf
 	} else {
-		// Update default conf with custom config.
-		err = yaml.Unmarshal(yamlData, &conf)
+		yamlData, err := ioutil.ReadFile(policyFile)
 		if err != nil {
-			return FileBasedPolicy{}, err
+			color.Set(color.FgYellow)
+			l.Println("Cannot read the policy file. Falling back to default policy...")
+			color.Unset()
+			policyFile = "[default]"
+			conf = defaultConf
+		} else {
+			// Update default conf with custom config.
+			err = yaml.Unmarshal(yamlData, &conf)
+			if err != nil {
+				return FileBasedPolicy{}, err
+			}
 		}
 	}
 
