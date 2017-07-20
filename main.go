@@ -54,6 +54,7 @@ var childMode bool = false
 var execCount int = 0
 var forkCount int = 0
 var childCount uint = 1
+var maxChildCount uint = 0
 
 // Ref: https://github.com/torvalds/linux/blob/master/include/uapi/linux/ptrace.h
 const PTRACE_SEIZE uintptr = 0x4206     /* Linux >= 3.4 */
@@ -202,6 +203,11 @@ loop:
 					if debug {
 						color.Set(color.FgBlue)
 						l.Printf("Our very child has exited. Done.")
+						color.Unset()
+					}
+					if watch {
+						color.Set(color.FgBlue)
+						l.Printf("Max child count: %d.", maxChildCount)
 						color.Unset()
 					}
 					break loop
@@ -426,6 +432,9 @@ loop:
 					childPid, _ := syscall.PtraceGetEventMsg(result.pid)
 					ptraceSeize(int(childPid), ourPtraceOpts)
 					childCount++
+					if maxChildCount < childCount {
+						maxChildCount = childCount
+					}
 					if debug {
 						color.Set(color.FgBlue)
 						l.Printf("Attached to new child %d\n", childPid)
