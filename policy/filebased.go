@@ -16,7 +16,7 @@ type PolicyConf struct {
 	WhitelistPaths   map[PathOps][]PatternMatcher `yaml:"whitelist_paths"`
 	ExecAllowance    int                          `yaml:"exec_allowance"`
 	ForkAllowance    int                          `yaml:"fork_allowance"`
-	MaxChildProcs    uint                         `yaml:"max_child_procs"`
+	MaxChildProcs    int                          `yaml:"max_child_procs"`
 	ExtraEnvs        []string                     `yaml:"extra_envs"`
 	PreservedEnvKeys []string                     `yaml:"preserved_env_keys"`
 	TracedSyscalls   []string                     `yaml:"traced_syscalls"`

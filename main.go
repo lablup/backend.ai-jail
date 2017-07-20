@@ -320,7 +320,8 @@ loop:
 							allow = (maxForks == -1 || forkCount < maxForks)
 							forkCount++
 						}
-						allow = allow && (childCount < policyInst.GetMaxChildProcs())
+						maxCount := policyInst.GetMaxChildProcs()
+						allow = allow && (maxCount == -1 || childCount < maxCount)
 						if debug {
 							l.Printf("fork owner: %s\n", execPath)
 						}
