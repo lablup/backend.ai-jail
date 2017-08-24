@@ -8,7 +8,7 @@ type SandboxPolicy interface {
 	CheckPathOp(path string, op PathOps, mode int) bool
 	GetExecAllowance() int
 	GetForkAllowance() int
-	GetMaxChildProcs() uint
+	GetMaxChildProcs() int
 	GetExtraEnvs() []string
 	GetPreservedEnvKeys() []string
 	GetTracedSyscalls() []string

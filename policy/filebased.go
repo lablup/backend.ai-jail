@@ -71,7 +71,7 @@ func (p FileBasedPolicy) GetForkAllowance() int {
 	return p.conf.ForkAllowance
 }
 
-func (p FileBasedPolicy) GetMaxChildProcs() uint {
+func (p FileBasedPolicy) GetMaxChildProcs() int {
 	return p.conf.MaxChildProcs
 }
 

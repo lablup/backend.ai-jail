@@ -53,8 +53,8 @@ var policyFile string
 var childMode bool = false
 var execCount int = 0
 var forkCount int = 0
-var childCount uint = 1
-var maxChildCount uint = 0
+var childCount int = 1
+var maxChildCount int = 0
 
 // Ref: https://github.com/torvalds/linux/blob/master/include/uapi/linux/ptrace.h
 const PTRACE_SEIZE uintptr = 0x4206     /* Linux >= 3.4 */
