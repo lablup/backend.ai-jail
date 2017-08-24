@@ -528,6 +528,8 @@ func main() {
 	var err error
 	defer handleExit()
 
+	syscall.Umask(0022)
+
 	l := log.New(os.Stderr, "", 0)
 	flag.Parse()
 

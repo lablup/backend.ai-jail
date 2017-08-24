@@ -130,6 +130,7 @@ func init() {
 		"fallocate",
 		"fstat",
 		"fstatfs",
+		"umask",
 		"mmap",
 		"mremap",
 		"mprotect",
