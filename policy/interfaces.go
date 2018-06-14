@@ -96,6 +96,7 @@ func init() {
 		"symlinkat",
 		// 2nd & 4th params are filename/paths
 		"renameat",
+		"linkat",
 		// traced by ptrace exec/fork/clone
 		"fork",
 		"vfork",
@@ -128,7 +129,9 @@ func init() {
 		"sendmmsg",
 		"close",
 		"fallocate",
+		"fchmod",
 		"fstat",
+		"newfstatat",
 		"fstatfs",
 		"umask",
 		"mmap",
@@ -161,6 +164,7 @@ func init() {
 		"ftruncate",
 		"utimensat",
 		"futimens",
+		"futimesat",
 		"utime",
 		"utimes",
 		"tee",
