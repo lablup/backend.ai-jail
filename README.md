@@ -1,6 +1,6 @@
 # Backend.ai-jail
 
-A dynamic sandbox for Sorna kernels.
+A dynamic sandbox for Backend.Ai kernels.
 
 
 ## Testing and Debugging
