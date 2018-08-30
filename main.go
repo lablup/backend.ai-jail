@@ -6,7 +6,7 @@ Command-line usage:
 	./jail -policy <policy_file> <child_args ...>
 
 Example:
-	./jail -policy python3.yml /bin/sh /home/sorna/run.sh
+	./jail -policy python3.yml /bin/sh /home/backend.ai/run.sh
 */
 package main
 
@@ -14,8 +14,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/fatih/color"
-	"github.com/lablup/sorna-jail/policy"
-	"github.com/lablup/sorna-jail/utils"
+	"github.com/lablup/backend.ai-jail/policy"
+	"github.com/lablup/backend.ai-jail/utils"
 	seccomp "github.com/seccomp/libseccomp-golang"
 	"log"
 	"os"
