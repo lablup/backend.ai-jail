@@ -25,6 +25,6 @@ _testmain.go
 *.prof
 
 build*/
-sorna-jail
+backend.ai-jail
 
 .*.swp
