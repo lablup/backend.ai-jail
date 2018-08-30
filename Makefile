@@ -1,4 +1,4 @@
-CONTAINER_WORKDIR=/go/src/github.com/lablup/sorna-jail
+CONTAINER_WORKDIR=/go/src/github.com/lablup/backend.ai-jail
 
 manylinux:
 	docker build -f Dockerfile.builder-manylinux -t jail-builder-manylinux .
