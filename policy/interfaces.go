@@ -58,6 +58,7 @@ func init() {
 	defaultConf.PreservedEnvKeys = []string{
 		"HOME", "PATH", "LANG",
 		"PYENV_ROOT", "PYTHONPATH",
+		"LD_LIBRARY_PATH",
 		"LD_PRELOAD",
 	}
 	//// Following syscalls are intercepted by our ptrace-based tracer.

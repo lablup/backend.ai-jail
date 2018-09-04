@@ -36,5 +36,7 @@ func (p PythonPolicy) GetPreservedEnvKeys() []string {
 		"PYTHONUNBUFFERED",
 		"MPLCONFIGDIR",
 		"OPENBLAS_NUM_THREADS",
+		"LD_LIBRARY_PATH",
+		"LD_PRELOAD",
 	}
 }

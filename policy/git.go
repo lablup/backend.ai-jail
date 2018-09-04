@@ -47,6 +47,7 @@ func (p *GitPolicy) GetPreservedEnvKeys() []string {
 		"USER", "SHELL",
 		"PYENV_ROOT", "PYTHONPATH",
 		"MPLCONFIGDIR",
+		"LD_LIBRARY_PATH",
 		"LD_PRELOAD",
 	}
 }

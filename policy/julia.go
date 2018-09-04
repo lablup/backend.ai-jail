@@ -37,6 +37,7 @@ func (p JuliaPolicy) GetPreservedEnvKeys() []string {
 		"JULIA_PKGDIR",
 		"OPENBLAS_NUM_THREADS",
 		"MPLCONFIGDIR",
+		"LD_LIBRARY_PATH",
 		"LD_PRELOAD",
 	}
 }
