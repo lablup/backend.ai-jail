@@ -4,13 +4,13 @@ manylinux:
 	docker build -f Dockerfile.builder-manylinux -t jail-builder-manylinux .
 	docker run --rm -v "$(shell pwd)":$(CONTAINER_WORKDIR) -w $(CONTAINER_WORKDIR) jail-builder-manylinux
 	mkdir -p build-manylinux
-	mv sorna-jail build-manylinux/jail
+	mv backend.ai-jail build-manylinux/jail
 
 musllinux:
 	docker build -f Dockerfile.builder-musllinux -t jail-builder-musllinux .
 	docker run --rm -v "$(shell pwd)":$(CONTAINER_WORKDIR) -w $(CONTAINER_WORKDIR) jail-builder-musllinux
 	mkdir -p build-musllinux
-	mv sorna-jail build-musllinux/jail
+	mv backend.ai-jail build-musllinux/jail
 
 inside-container:
 	go build -v
