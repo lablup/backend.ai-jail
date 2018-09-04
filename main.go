@@ -623,7 +623,7 @@ func main() {
 			abspath = filepath.Join(cwd, policyFile)
 		}
 		dir, _ = filepath.Split(abspath)
-		if dir == "/home/sorna/" {
+		if dir == "/home/sorna/" || dir == "/home/backend.ai/" {
 			os.Remove(abspath)
 		}
 
