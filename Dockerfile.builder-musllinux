@@ -1,4 +1,4 @@
-FROM golang:1.8-alpine
+FROM golang:1.11-alpine
 RUN apk add --no-cache build-base libseccomp-dev git linux-headers
 RUN go get -u github.com/fatih/color && \
     go get -u github.com/seccomp/libseccomp-golang && \
