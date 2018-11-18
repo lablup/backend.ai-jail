@@ -19,6 +19,7 @@ import (
 	seccomp "github.com/seccomp/libseccomp-golang"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
@@ -38,6 +39,7 @@ var (
 	id_Fork, _     = seccomp.GetSyscallFromNameByArch("fork", arch)
 	id_Vfork, _    = seccomp.GetSyscallFromNameByArch("vfork", arch)
 	id_Execve, _   = seccomp.GetSyscallFromNameByArch("execve", arch)
+	id_ExecveAt, _ = seccomp.GetSyscallFromNameByArch("execveat", arch)
 	id_Kill, _     = seccomp.GetSyscallFromNameByArch("kill", arch)
 	id_Killpg, _   = seccomp.GetSyscallFromNameByArch("killpg", arch)
 	id_Tkill, _    = seccomp.GetSyscallFromNameByArch("tkill", arch)
@@ -351,7 +353,7 @@ loop:
 						default:
 							allow = true
 						}
-					case id_Execve:
+					case id_Execve, id_ExecveAt:
 						execPath, _ := utils.GetExecutable(result.pid)
 						if execPath == myExecPath {
 							allow = true
@@ -506,6 +508,8 @@ func init() {
 	flag.StringVar(&policyFile, "policy", "[default]", "Path to policy config file. If set \"[default]\", it uses the embedded default policy.")
 	flag.BoolVar(&debug, "debug", false, "Set the debug mode. Shows every detail of syscalls.")
 	flag.BoolVar(&watch, "watch", false, "Set the watch mode. Shows syscalls blocked by the policy.")
+	// debug = true
+	// watch = true
 }
 
 func handleExit() {
@@ -627,30 +631,32 @@ func main() {
 			os.Remove(abspath)
 		}
 
-		syscall.RawSyscall(syscall.SYS_PRCTL, syscall.PR_SET_PTRACER, uintptr(os.Getppid()), 0)
+		// syscall.RawSyscall(syscall.SYS_PRCTL, syscall.PR_SET_PTRACER, uintptr(os.Getppid()), 0)
 
 		arch, _ := seccomp.GetNativeArch()
 		laterFilter, _ := seccomp.NewFilter(seccomp.ActErrno.SetReturnCode(int16(syscall.EPERM)))
 		for _, syscallName := range policyInst.GetAllowedSyscalls() {
-			syscallId, _ := seccomp.GetSyscallFromNameByArch(syscallName, arch)
-			laterFilter.AddRuleExact(syscallId, seccomp.ActAllow)
+			syscallId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
+			if err == nil {
+				laterFilter.AddRuleExact(syscallId, seccomp.ActAllow)
+			}
 		}
 		for _, syscallName := range policyInst.GetTracedSyscalls() {
-			syscallId, _ := seccomp.GetSyscallFromNameByArch(syscallName, arch)
-			laterFilter.AddRuleExact(syscallId, seccomp.ActTrace)
+			syscallId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
+			if err == nil {
+				// laterFilter.AddRuleExact(syscallId, seccomp.ActTrace)
+				laterFilter.AddRuleExact(syscallId, seccomp.ActAllow)
+			}
 		}
 		killSyscalls := []string{"kill", "killpg", "tkill", "tgkill"}
 		for _, syscallName := range killSyscalls {
 			scId, _ := seccomp.GetSyscallFromNameByArch(syscallName, arch)
-			laterFilter.AddRuleExact(scId, seccomp.ActTrace)
+			if err == nil {
+				// laterFilter.AddRuleExact(scId, seccomp.ActTrace)
+				laterFilter.AddRuleExact(scId, seccomp.ActAllow)
+			}
 		}
 		laterFilter.SetNoNewPrivsBit(true)
-
-		// Inform the parent that I'm ready to continue.
-		// Any code before this line code must use only non-traced system calls in
-		// the filter because the tracer has not set up itself yet.
-		// (traced syscalls will cause ENOSYS "function not implemented" error)
-		syscall.Kill(os.Getpid(), syscall.SIGSTOP)
 
 		// Now we have the working tracer parent.
 		// Make kill() syscall to be traced as well for more sophisticated filtering.
@@ -661,11 +667,22 @@ func main() {
 		}
 		laterFilter.Release()
 
+		// Inform the parent that I'm ready to continue.
+		// Any code before this line code must use only non-traced system calls in
+		// the filter because the tracer has not set up itself yet.
+		// (traced syscalls will cause ENOSYS "function not implemented" error)
+		syscall.Kill(os.Getpid(), syscall.SIGSTOP)
+
 		// NOTE: signal.Reset() here causes race conditions with the tracer.
 		// (syscall tracing doesn't work deterministically with it.)
 
 		// Replace myself with the language runtime.
-		err = syscall.Exec(flag.Arg(0), flag.Args()[0:], os.Environ())
+		binaryPath, err := exec.LookPath(flag.Arg(0))
+		if err != nil {
+			color.Set(color.FgRed)
+			l.Panic("LookPath: ", err)
+		}
+		err = syscall.Exec(binaryPath, flag.Args()[0:], os.Environ())
 
 		// NOTE: "function not implemented" errors here may be due to above codes.
 		color.Set(color.FgRed)
