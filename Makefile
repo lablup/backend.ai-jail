@@ -13,7 +13,7 @@ musllinux:
 	mv backend.ai-jail build-musllinux/jail
 
 inside-container:
-	go build -v
+	go build -tags netgo -ldflags '-extldflags "-static"' -v
 
 prepare-dev:
 	docker build -f Dockerfile -t jail-dev .
