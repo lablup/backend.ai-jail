@@ -50,6 +50,7 @@ var (
 
 var debug bool = false
 var watch bool = false
+var noop bool = false
 var policyInst policy.SandboxPolicy
 var policyFile string
 var childMode bool = false
@@ -153,7 +154,7 @@ func traceProcess(l *log.Logger, pid int) {
 					// No child processes found. Terminate.
 					break
 				default:
-					color.Set(color.FgCyan)
+					color.Set(color.FgRed)
 					l.Printf("unexpected errno %s", err)
 					color.Unset()
 					break
@@ -508,6 +509,7 @@ func init() {
 	flag.StringVar(&policyFile, "policy", "[default]", "Path to policy config file. If set \"[default]\", it uses the embedded default policy.")
 	flag.BoolVar(&debug, "debug", false, "Set the debug mode. Shows every detail of syscalls.")
 	flag.BoolVar(&watch, "watch", false, "Set the watch mode. Shows syscalls blocked by the policy.")
+	flag.BoolVar(&noop, "noop", false, "Set the no-op mode. Jail becomes a completely transparent exec wrapper.")
 	// debug = true
 	// watch = true
 }
@@ -537,16 +539,23 @@ func main() {
 	l := log.New(os.Stderr, "", 0)
 	flag.Parse()
 
-	if debug {
+	if noop {
+		color.Set(color.FgYellow)
+		l.Printf("NOOP MODE: doing nothing! (debug/watch are disabled, too)")
+		debug = false
 		watch = false
-		color.Set(color.FgYellow)
-		l.Printf("DEBUG MODE: showing all details")
-		color.Unset()
-	}
-	if watch {
-		color.Set(color.FgYellow)
-		l.Printf("WATCH MODE: all syscalls are ALLOWED but it shows which ones will be blocked by the current policy.")
-		color.Unset()
+	} else {
+		if debug {
+			watch = false
+			color.Set(color.FgYellow)
+			l.Printf("DEBUG MODE: showing all details")
+			color.Unset()
+		}
+		if watch {
+			color.Set(color.FgYellow)
+			l.Printf("WATCH MODE: all syscalls are ALLOWED but it shows which ones will be blocked by the current policy.")
+			color.Unset()
+		}
 	}
 
 	if !childMode {
@@ -600,7 +609,12 @@ func main() {
 			color.Set(color.FgRed)
 			l.Panicf("ForkExec(\"%s\"): %s", args[0], err)
 		}
-		traceProcess(l, pid)
+		if noop {
+			var status syscall.WaitStatus
+			syscall.Wait4(pid, &status, syscall.WALL, nil)
+		} else {
+			traceProcess(l, pid)
+		}
 
 	} else {
 		/* The child. */
@@ -613,45 +627,45 @@ func main() {
 
 		// syscall.RawSyscall(syscall.SYS_PRCTL, syscall.PR_SET_PTRACER, uintptr(os.Getppid()), 0)
 
-		arch, _ := seccomp.GetNativeArch()
-		laterFilter, _ := seccomp.NewFilter(seccomp.ActErrno.SetReturnCode(int16(syscall.EPERM)))
-		for _, syscallName := range policyInst.GetAllowedSyscalls() {
-			syscallId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
-			if err == nil {
-				laterFilter.AddRuleExact(syscallId, seccomp.ActAllow)
+		if !noop {
+			arch, _ := seccomp.GetNativeArch()
+			laterFilter, _ := seccomp.NewFilter(seccomp.ActErrno.SetReturnCode(int16(syscall.EPERM)))
+			for _, syscallName := range policyInst.GetAllowedSyscalls() {
+				syscallId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
+				if err == nil {
+					laterFilter.AddRuleExact(syscallId, seccomp.ActAllow)
+				}
 			}
-		}
-		for _, syscallName := range policyInst.GetTracedSyscalls() {
-			syscallId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
-			if err == nil {
-				// laterFilter.AddRuleExact(syscallId, seccomp.ActTrace)
-				laterFilter.AddRuleExact(syscallId, seccomp.ActAllow)
+			for _, syscallName := range policyInst.GetTracedSyscalls() {
+				syscallId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
+				if err == nil {
+					laterFilter.AddRuleExact(syscallId, seccomp.ActTrace)
+				}
 			}
-		}
-		killSyscalls := []string{"kill", "killpg", "tkill", "tgkill"}
-		for _, syscallName := range killSyscalls {
-			scId, _ := seccomp.GetSyscallFromNameByArch(syscallName, arch)
-			if err == nil {
-				// laterFilter.AddRuleExact(scId, seccomp.ActTrace)
-				laterFilter.AddRuleExact(scId, seccomp.ActAllow)
+			killSyscalls := []string{"kill", "killpg", "tkill", "tgkill"}
+			for _, syscallName := range killSyscalls {
+				scId, _ := seccomp.GetSyscallFromNameByArch(syscallName, arch)
+				if err == nil {
+					laterFilter.AddRuleExact(scId, seccomp.ActTrace)
+				}
 			}
-		}
-		laterFilter.SetNoNewPrivsBit(true)
+			laterFilter.SetNoNewPrivsBit(true)
 
-		// Now we have the working tracer parent.
-		// Make kill() syscall to be traced as well for more sophisticated filtering.
-		err := laterFilter.Load()
-		if err != nil {
-			color.Set(color.FgRed)
-			l.Panic("ScmpFilter.Load (2): ", err)
-		}
-		laterFilter.Release()
+			// Now we have the working tracer parent.
+			// Make kill() syscall to be traced as well for more sophisticated filtering.
+			err := laterFilter.Load()
+			if err != nil {
+				color.Set(color.FgRed)
+				l.Panic("ScmpFilter.Load (2): ", err)
+			}
+			laterFilter.Release()
 
-		// Inform the parent that I'm ready to continue.
-		// Any code before this line code must use only non-traced system calls in
-		// the filter because the tracer has not set up itself yet.
-		// (traced syscalls will cause ENOSYS "function not implemented" error)
-		syscall.Kill(os.Getpid(), syscall.SIGSTOP)
+			// Inform the parent that I'm ready to continue.
+			// Any code before this line code must use only non-traced system calls in
+			// the filter because the tracer has not set up itself yet.
+			// (traced syscalls will cause ENOSYS "function not implemented" error)
+			syscall.Kill(os.Getpid(), syscall.SIGSTOP)
+		}
 
 		// NOTE: signal.Reset() here causes race conditions with the tracer.
 		// (syscall tracing doesn't work deterministically with it.)
