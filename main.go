@@ -611,26 +611,6 @@ func main() {
 			l.Panic("GeneratePolicy: ", err)
 		}
 
-		// Deleting policy file may be the simplest way to deny further
-		// access to the policy by the child process. To preserve
-		// policy file in development phase, we delete policy files in
-		// /home/sorna/ directory only (since runtime image will place
-		// their policy files to the dir). Of course, this is not a
-		// general method, and there may be a need in the future to
-		// deny access in the basis of syscall filter (open). This will
-		// make tracing loop a little more complex.
-		var abspath, dir string
-		if filepath.IsAbs(policyFile) {
-			abspath = policyFile
-		} else {
-			cwd, _ := os.Getwd()
-			abspath = filepath.Join(cwd, policyFile)
-		}
-		dir, _ = filepath.Split(abspath)
-		if dir == "/home/sorna/" || dir == "/home/backend.ai/" {
-			os.Remove(abspath)
-		}
-
 		// syscall.RawSyscall(syscall.SYS_PRCTL, syscall.PR_SET_PTRACER, uintptr(os.Getppid()), 0)
 
 		arch, _ := seccomp.GetNativeArch()
