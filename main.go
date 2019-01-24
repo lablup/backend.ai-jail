@@ -13,10 +13,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/fatih/color"
-	"github.com/lablup/backend.ai-jail/policy"
-	"github.com/lablup/backend.ai-jail/utils"
-	seccomp "github.com/seccomp/libseccomp-golang"
 	"log"
 	"os"
 	"os/exec"
@@ -24,6 +20,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"syscall"
+
+	"github.com/fatih/color"
+	"github.com/lablup/backend.ai-jail/policy"
+	"github.com/lablup/backend.ai-jail/utils"
+	seccomp "github.com/seccomp/libseccomp-golang"
 )
 
 type Exit struct{ Code int }
@@ -530,6 +531,28 @@ func handleExit() {
 	}
 }
 
+func LogInfo(message string, args ...interface{}) {
+	l := log.New(os.Stderr, "", 0)
+	color.Set(color.FgBlue)
+	l.Printf(message, args...)
+	color.Unset()
+}
+
+func LogDebug(message string, args ...interface{}) {
+	l := log.New(os.Stderr, "", 0)
+	color.Set(color.FgYellow)
+	l.Printf(message, args...)
+	color.Unset()
+}
+
+func LogError(message string, args ...interface{}) {
+	l := log.New(os.Stderr, "", 0)
+	color.Set(color.FgRed)
+	l.Printf(message, args...)
+	color.Unset()
+	l.Panic("")
+}
+
 func main() {
 	var err error
 	defer handleExit()
@@ -540,21 +563,16 @@ func main() {
 	flag.Parse()
 
 	if noop {
-		color.Set(color.FgYellow)
-		l.Printf("NOOP MODE: doing nothing! (debug/watch are disabled, too)")
+		LogDebug("NOOP MODE: doing nothing! (debug/watch are disabled, too)")
 		debug = false
 		watch = false
 	} else {
 		if debug {
+			LogDebug("DEBUG MODE: showing all details")
 			watch = false
-			color.Set(color.FgYellow)
-			l.Printf("DEBUG MODE: showing all details")
-			color.Unset()
 		}
 		if watch {
-			color.Set(color.FgYellow)
-			l.Printf("WATCH MODE: all syscalls are ALLOWED but it shows which ones will be blocked by the current policy.")
-			color.Unset()
+			LogDebug("WATCH MODE: all syscalls are ALLOWED but it shows which ones will be blocked by the current policy.")
 		}
 	}
 
@@ -562,14 +580,12 @@ func main() {
 		/* The parent. */
 
 		if flag.NArg() < 1 {
-			color.Set(color.FgRed)
-			l.Panic("Main: Not enough command-line arguments. See the docs.")
+			LogError("Main: Not enough command-line arguments. See the docs.")
 		}
 
 		policyInst, err = policy.GeneratePolicyFromYAML(l, policyFile)
 		if err != nil {
-			color.Set(color.FgRed)
-			l.Panic("GeneratePolicy: ", err)
+			LogError("GeneratePolicy: %s", err)
 		}
 
 		/* Initialize fork/exec of the child. */
@@ -606,8 +622,9 @@ func main() {
 			},
 		})
 		if err != nil {
-			color.Set(color.FgRed)
-			l.Panicf("ForkExec(\"%s\"): %s", args[0], err)
+			LogError("ForkExec(\"%s\"): %s", args[0], err)
+			// color.Set(color.FgRed)
+			// l.Panicf("ForkExec(\"%s\"): %s", args[0], err)
 		}
 		if noop {
 			var status syscall.WaitStatus
@@ -673,14 +690,17 @@ func main() {
 		// Replace myself with the language runtime.
 		binaryPath, err := exec.LookPath(flag.Arg(0))
 		if err != nil {
-			color.Set(color.FgRed)
-			l.Panic("LookPath: ", err)
+			LogError("LookPath: ", err)
+			// color.Set(color.FgRed)
+			// l.Panic("LookPath: ", err)
 		}
 		err = syscall.Exec(binaryPath, flag.Args()[0:], os.Environ())
 
 		// NOTE: "function not implemented" errors here may be due to above codes.
-		color.Set(color.FgRed)
-		l.Panicf("Exec(\"%s\"): %s\nNOTE: You need to provide the absolute path.", flag.Arg(0), err)
+
+		LogError("Exec(\"%s\"): %s\nNOTE: You need to provide the absolute path.", flag.Arg(0), err)
+		// color.Set(color.FgRed)
+		// l.Panicf("Exec(\"%s\"): %s\nNOTE: You need to provide the absolute path.", flag.Arg(0), err)
 
 	}
 }
