@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
 	"strings"
 	"syscall"
+
+	"github.com/fatih/color"
 )
 
 func FilterEnvs(envs []string, preservedKeys []string) []string {
@@ -138,4 +141,26 @@ func CountChildren(pid int) uint {
 		}
 	}
 	return numThreads + sumChildrenThreads
+}
+
+func LogInfo(message string, args ...interface{}) {
+	l := log.New(os.Stderr, "", 0)
+	color.Set(color.FgBlue)
+	l.Printf(message, args...)
+	color.Unset()
+}
+
+func LogDebug(message string, args ...interface{}) {
+	l := log.New(os.Stderr, "", 0)
+	color.Set(color.FgYellow)
+	l.Printf(message, args...)
+	color.Unset()
+}
+
+func LogError(message string, args ...interface{}) {
+	l := log.New(os.Stderr, "", 0)
+	color.Set(color.FgRed)
+	l.Printf(message, args...)
+	color.Unset()
+	l.Panic("")
 }

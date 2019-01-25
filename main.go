@@ -493,6 +493,7 @@ func handleExit() {
 	}
 }
 
+/*
 func LogInfo(message string, args ...interface{}) {
 	l := log.New(os.Stderr, "", 0)
 	color.Set(color.FgBlue)
@@ -514,6 +515,7 @@ func LogError(message string, args ...interface{}) {
 	color.Unset()
 	l.Panic("")
 }
+*/
 
 func InitializeFilter() {
 
@@ -562,8 +564,7 @@ func main() {
 		LogDebug("NOOP MODE: doing nothing! (debug/watch are disabled, too)")
 		debug = false
 		watch = false
-	}
-	else {
+	} else {
 		if debug {
 			LogDebug("DEBUG MODE: showing all details")
 			watch = false
