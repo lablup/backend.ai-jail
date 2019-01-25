@@ -121,23 +121,17 @@ func traceProcess(l *log.Logger, pid int) {
 	// Child is first-stopped.
 	status := waitChildStop(pid)
 	if !status.Stopped() || status.StopSignal() != syscall.SIGSTOP {
-		color.Set(color.FgRed)
-		l.Printf("Unexpected wait status 0x%x", uint(status))
-		color.Unset()
+		LogError("Unexpected wait status 0x%x", uint(status))
 		return
 	}
 
 	ret, seizeErr := ptraceSeize(pid, ourPtraceOpts)
 	if ret != 0 {
-		color.Set(color.FgRed)
-		l.Printf("ptraceSeize error: %d\n", seizeErr)
-		color.Unset()
+		LogError("ptraceSeize error: %d\n", seizeErr)
 		return
 	}
 	if debug {
-		color.Set(color.FgBlue)
-		l.Printf("attached child %d\n", pid)
-		color.Unset()
+		LogInfo("attached child %d\n", pid)
 	}
 
 	syscall.Kill(pid, syscall.SIGCONT)
@@ -155,9 +149,7 @@ func traceProcess(l *log.Logger, pid int) {
 					// No child processes found. Terminate.
 					break
 				default:
-					color.Set(color.FgRed)
-					l.Printf("unexpected errno %s", err)
-					color.Unset()
+					LogError("unexpected errno %s", err)
 					break
 				}
 			}
@@ -167,9 +159,7 @@ func traceProcess(l *log.Logger, pid int) {
 			}
 		}
 		if debug {
-			color.Set(color.FgBlue)
-			l.Printf("monitoring goroutine terminating.")
-			color.Unset()
+			LogInfo("monitoring goroutine terminating.")
 		}
 	}()
 
@@ -199,36 +189,26 @@ loop:
 
 			if result.status.Exited() {
 				if debug {
-					color.Set(color.FgBlue)
-					l.Printf("EXIT (pid %d) status %d\n", result.pid, result.status.ExitStatus())
-					color.Unset()
+					LogInfo("EXIT (pid %d) status %d\n", result.pid, result.status.ExitStatus())
 				}
 				if pid == result.pid {
 					if debug {
-						color.Set(color.FgBlue)
-						l.Printf("Our very child has exited. Done.")
-						color.Unset()
+						LogInfo("Our very child has exited. Done.")
 					}
 					if watch {
-						color.Set(color.FgBlue)
-						l.Printf("Max child count: %d.", maxChildCount)
-						color.Unset()
+						LogInfo("Max child count: %d.", maxChildCount)
 					}
 					break loop
 				} else if result.pid == -1 {
 					if debug {
-						color.Set(color.FgRed)
-						l.Printf("waitpid error: %s (exit status %d). Terminating.", result.err, result.status.ExitStatus())
-						color.Unset()
+						LogError("waitpid error: %s (exit status %d). Terminating.", result.err, result.status.ExitStatus())
 					}
 					break loop
 				} else {
 					// If we attach grand-children processes, this may be the case.
 					childCount--
 					if debug {
-						color.Set(color.FgBlue)
-						l.Printf("childCount is now %d\n", childCount)
-						color.Unset()
+						LogInfo("childCount is now %d\n", childCount)
 					}
 				}
 			}
@@ -246,9 +226,7 @@ loop:
 			stopsig := result.status.StopSignal()
 
 			if debug {
-				color.Set(color.FgYellow)
-				l.Printf("Received signal: 0x%x (%d) \"%s\"", uint(stopsig), uint(stopsig), stopsig)
-				color.Unset()
+				LogDebug("Received signal: 0x%x (%d) \"%s\"", uint(stopsig), uint(stopsig), stopsig)
 			}
 
 			childStopped := false
@@ -262,9 +240,7 @@ loop:
 				case syscall.SIGSTOP, syscall.SIGTSTP, syscall.SIGTTOU, syscall.SIGTTIN:
 					childStopped = true
 					if debug {
-						color.Set(color.FgYellow)
-						l.Printf("group-stop detected")
-						color.Unset()
+						LogDebug("group-stop detected")
 					}
 				}
 			default:
@@ -277,9 +253,7 @@ loop:
 			case syscall.SIGTRAP:
 				eventCause := ((uint(result.status) >> 8) & (^uint(syscall.SIGTRAP))) >> 8
 				if debug {
-					color.Set(color.FgYellow)
-					l.Printf("event-cause: %d\n", eventCause)
-					color.Unset()
+					LogDebug("event-cause: %d\n", eventCause)
 				}
 
 				switch eventCause {
@@ -307,10 +281,8 @@ loop:
 					}
 					syscallId := uint(regs.Orig_rax)
 					if debug {
-						color.Set(color.FgYellow)
 						sn, _ := seccomp.ScmpSyscall(syscallId).GetName()
-						l.Printf("seccomp trap (%d %s)", syscallId, sn)
-						color.Unset()
+						LogDebug("seccomp trap (%d %s)", syscallId, sn)
 					}
 					switch seccomp.ScmpSyscall(syscallId) {
 					case id_Fork, id_Vfork, id_Clone:
@@ -441,10 +413,8 @@ loop:
 						maxChildCount = childCount
 					}
 					if debug {
-						color.Set(color.FgBlue)
-						l.Printf("Attached to new child %d\n", childPid)
-						l.Printf("childCount is now %d\n", childCount)
-						color.Unset()
+						LogInfo("Attached to new child %d\n", childPid)
+						LogInfo("childCount is now %d\n", childCount)
 					}
 				case PTRACE_EVENT_STOP:
 					// already processed above
@@ -452,9 +422,7 @@ loop:
 					// ignore
 				default:
 					if debug || watch {
-						color.Set(color.FgRed)
-						l.Printf("Unknown trap cause: %d\n", result.status.TrapCause())
-						color.Unset()
+						LogError("Unknown trap cause: %d\n", result.status.TrapCause())
 					}
 				}
 			//case syscall.SIGCHLD:
@@ -479,23 +447,17 @@ loop:
 			if childStopped && stopsig != syscall.SIGTRAP {
 				// may be a group-stop; we need to keep the child stopped.
 				if debug {
-					color.Set(color.FgYellow)
-					l.Printf("ptrace-listen")
-					color.Unset()
+					LogDebug("ptrace-listen")
 				}
 				_, err = ptraceListen(result.pid, 0)
 			} else {
 				if debug {
-					color.Set(color.FgYellow)
-					l.Printf("ptrace-cont")
-					color.Unset()
+					LogDebug("ptrace-cont")
 				}
 				err = syscall.PtraceCont(result.pid, int(signalToChild))
 			}
 			if err != nil && err.(syscall.Errno) != 0 {
-				color.Set(color.FgRed)
-				l.Printf("ptrace-continue error %s", err)
-				color.Unset()
+				LogError("ptrace-continue error %s", err)
 				errno := err.(syscall.Errno)
 				if errno == syscall.EBUSY || errno == syscall.EFAULT || errno == syscall.ESRCH {
 					break loop
@@ -553,6 +515,40 @@ func LogError(message string, args ...interface{}) {
 	l.Panic("")
 }
 
+func InitializeFilter() {
+
+	arch, _ := seccomp.GetNativeArch()
+	laterFilter, _ := seccomp.NewFilter(seccomp.ActErrno.SetReturnCode(int16(syscall.EPERM)))
+	for _, syscallName := range policyInst.GetAllowedSyscalls() {
+		syscallId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
+		if err == nil {
+			laterFilter.AddRuleExact(syscallId, seccomp.ActAllow)
+		}
+	}
+	for _, syscallName := range policyInst.GetTracedSyscalls() {
+		syscallId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
+		if err == nil {
+			laterFilter.AddRuleExact(syscallId, seccomp.ActTrace)
+		}
+	}
+	killSyscalls := []string{"kill", "killpg", "tkill", "tgkill"}
+	for _, syscallName := range killSyscalls {
+		scId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
+		if err == nil {
+			laterFilter.AddRuleExact(scId, seccomp.ActTrace)
+		}
+	}
+	laterFilter.SetNoNewPrivsBit(true)
+
+	// Now we have the working tracer parent.
+	// Make kill() syscall to be traced as well for more sophisticated filtering.
+	err := laterFilter.Load()
+	if err != nil {
+		LogError("ScmpFilter.Load (2): ", err)
+	}
+	laterFilter.Release()
+}
+
 func main() {
 	var err error
 	defer handleExit()
@@ -566,7 +562,8 @@ func main() {
 		LogDebug("NOOP MODE: doing nothing! (debug/watch are disabled, too)")
 		debug = false
 		watch = false
-	} else {
+	}
+	else {
 		if debug {
 			LogDebug("DEBUG MODE: showing all details")
 			watch = false
@@ -623,8 +620,6 @@ func main() {
 		})
 		if err != nil {
 			LogError("ForkExec(\"%s\"): %s", args[0], err)
-			// color.Set(color.FgRed)
-			// l.Panicf("ForkExec(\"%s\"): %s", args[0], err)
 		}
 		if noop {
 			var status syscall.WaitStatus
@@ -638,44 +633,14 @@ func main() {
 
 		policyInst, err = policy.GeneratePolicyFromYAML(l, policyFile)
 		if err != nil {
-			color.Set(color.FgRed)
-			l.Panic("GeneratePolicy: ", err)
+			LogError("GeneratePolicy: %s", err)
 		}
 
 		// syscall.RawSyscall(syscall.SYS_PRCTL, syscall.PR_SET_PTRACER, uintptr(os.Getppid()), 0)
 
 		if !noop {
-			arch, _ := seccomp.GetNativeArch()
-			laterFilter, _ := seccomp.NewFilter(seccomp.ActErrno.SetReturnCode(int16(syscall.EPERM)))
-			for _, syscallName := range policyInst.GetAllowedSyscalls() {
-				syscallId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
-				if err == nil {
-					laterFilter.AddRuleExact(syscallId, seccomp.ActAllow)
-				}
-			}
-			for _, syscallName := range policyInst.GetTracedSyscalls() {
-				syscallId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
-				if err == nil {
-					laterFilter.AddRuleExact(syscallId, seccomp.ActTrace)
-				}
-			}
-			killSyscalls := []string{"kill", "killpg", "tkill", "tgkill"}
-			for _, syscallName := range killSyscalls {
-				scId, _ := seccomp.GetSyscallFromNameByArch(syscallName, arch)
-				if err == nil {
-					laterFilter.AddRuleExact(scId, seccomp.ActTrace)
-				}
-			}
-			laterFilter.SetNoNewPrivsBit(true)
 
-			// Now we have the working tracer parent.
-			// Make kill() syscall to be traced as well for more sophisticated filtering.
-			err := laterFilter.Load()
-			if err != nil {
-				color.Set(color.FgRed)
-				l.Panic("ScmpFilter.Load (2): ", err)
-			}
-			laterFilter.Release()
+			InitializeFilter()
 
 			// Inform the parent that I'm ready to continue.
 			// Any code before this line code must use only non-traced system calls in
@@ -691,16 +656,12 @@ func main() {
 		binaryPath, err := exec.LookPath(flag.Arg(0))
 		if err != nil {
 			LogError("LookPath: ", err)
-			// color.Set(color.FgRed)
-			// l.Panic("LookPath: ", err)
 		}
 		err = syscall.Exec(binaryPath, flag.Args()[0:], os.Environ())
 
 		// NOTE: "function not implemented" errors here may be due to above codes.
 
 		LogError("Exec(\"%s\"): %s\nNOTE: You need to provide the absolute path.", flag.Arg(0), err)
-		// color.Set(color.FgRed)
-		// l.Panicf("Exec(\"%s\"): %s\nNOTE: You need to provide the absolute path.", flag.Arg(0), err)
 
 	}
 }
