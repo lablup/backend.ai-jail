@@ -121,17 +121,17 @@ func traceProcess(l *log.Logger, pid int) {
 	// Child is first-stopped.
 	status := waitChildStop(pid)
 	if !status.Stopped() || status.StopSignal() != syscall.SIGSTOP {
-		LogError("Unexpected wait status 0x%x", uint(status))
+		utils.LogError("Unexpected wait status 0x%x", uint(status))
 		return
 	}
 
 	ret, seizeErr := ptraceSeize(pid, ourPtraceOpts)
 	if ret != 0 {
-		LogError("ptraceSeize error: %d\n", seizeErr)
+		utils.LogError("ptraceSeize error: %d\n", seizeErr)
 		return
 	}
 	if debug {
-		LogInfo("attached child %d\n", pid)
+		utils.LogInfo("attached child %d\n", pid)
 	}
 
 	syscall.Kill(pid, syscall.SIGCONT)
@@ -149,7 +149,7 @@ func traceProcess(l *log.Logger, pid int) {
 					// No child processes found. Terminate.
 					break
 				default:
-					LogError("unexpected errno %s", err)
+					utils.LogError("unexpected errno %s", err)
 					break
 				}
 			}
@@ -159,7 +159,7 @@ func traceProcess(l *log.Logger, pid int) {
 			}
 		}
 		if debug {
-			LogInfo("monitoring goroutine terminating.")
+			utils.LogInfo("monitoring goroutine terminating.")
 		}
 	}()
 
@@ -189,26 +189,26 @@ loop:
 
 			if result.status.Exited() {
 				if debug {
-					LogInfo("EXIT (pid %d) status %d\n", result.pid, result.status.ExitStatus())
+					utils.LogInfo("EXIT (pid %d) status %d\n", result.pid, result.status.ExitStatus())
 				}
 				if pid == result.pid {
 					if debug {
-						LogInfo("Our very child has exited. Done.")
+						utils.LogInfo("Our very child has exited. Done.")
 					}
 					if watch {
-						LogInfo("Max child count: %d.", maxChildCount)
+						utils.LogInfo("Max child count: %d.", maxChildCount)
 					}
 					break loop
 				} else if result.pid == -1 {
 					if debug {
-						LogError("waitpid error: %s (exit status %d). Terminating.", result.err, result.status.ExitStatus())
+						utils.LogError("waitpid error: %s (exit status %d). Terminating.", result.err, result.status.ExitStatus())
 					}
 					break loop
 				} else {
 					// If we attach grand-children processes, this may be the case.
 					childCount--
 					if debug {
-						LogInfo("childCount is now %d\n", childCount)
+						utils.LogInfo("childCount is now %d\n", childCount)
 					}
 				}
 			}
@@ -226,7 +226,7 @@ loop:
 			stopsig := result.status.StopSignal()
 
 			if debug {
-				LogDebug("Received signal: 0x%x (%d) \"%s\"", uint(stopsig), uint(stopsig), stopsig)
+				utils.LogDebug("Received signal: 0x%x (%d) \"%s\"", uint(stopsig), uint(stopsig), stopsig)
 			}
 
 			childStopped := false
@@ -240,7 +240,7 @@ loop:
 				case syscall.SIGSTOP, syscall.SIGTSTP, syscall.SIGTTOU, syscall.SIGTTIN:
 					childStopped = true
 					if debug {
-						LogDebug("group-stop detected")
+						utils.LogDebug("group-stop detected")
 					}
 				}
 			default:
@@ -253,7 +253,7 @@ loop:
 			case syscall.SIGTRAP:
 				eventCause := ((uint(result.status) >> 8) & (^uint(syscall.SIGTRAP))) >> 8
 				if debug {
-					LogDebug("event-cause: %d\n", eventCause)
+					utils.LogDebug("event-cause: %d\n", eventCause)
 				}
 
 				switch eventCause {
@@ -282,7 +282,7 @@ loop:
 					syscallId := uint(regs.Orig_rax)
 					if debug {
 						sn, _ := seccomp.ScmpSyscall(syscallId).GetName()
-						LogDebug("seccomp trap (%d %s)", syscallId, sn)
+						utils.LogDebug("seccomp trap (%d %s)", syscallId, sn)
 					}
 					switch seccomp.ScmpSyscall(syscallId) {
 					case id_Fork, id_Vfork, id_Clone:
@@ -413,8 +413,8 @@ loop:
 						maxChildCount = childCount
 					}
 					if debug {
-						LogInfo("Attached to new child %d\n", childPid)
-						LogInfo("childCount is now %d\n", childCount)
+						utils.LogInfo("Attached to new child %d\n", childPid)
+						utils.LogInfo("childCount is now %d\n", childCount)
 					}
 				case PTRACE_EVENT_STOP:
 					// already processed above
@@ -422,7 +422,7 @@ loop:
 					// ignore
 				default:
 					if debug || watch {
-						LogError("Unknown trap cause: %d\n", result.status.TrapCause())
+						utils.LogError("Unknown trap cause: %d\n", result.status.TrapCause())
 					}
 				}
 			//case syscall.SIGCHLD:
@@ -447,17 +447,17 @@ loop:
 			if childStopped && stopsig != syscall.SIGTRAP {
 				// may be a group-stop; we need to keep the child stopped.
 				if debug {
-					LogDebug("ptrace-listen")
+					utils.LogDebug("ptrace-listen")
 				}
 				_, err = ptraceListen(result.pid, 0)
 			} else {
 				if debug {
-					LogDebug("ptrace-cont")
+					utils.LogDebug("ptrace-cont")
 				}
 				err = syscall.PtraceCont(result.pid, int(signalToChild))
 			}
 			if err != nil && err.(syscall.Errno) != 0 {
-				LogError("ptrace-continue error %s", err)
+				utils.LogError("ptrace-continue error %s", err)
 				errno := err.(syscall.Errno)
 				if errno == syscall.EBUSY || errno == syscall.EFAULT || errno == syscall.ESRCH {
 					break loop
@@ -546,7 +546,7 @@ func InitializeFilter() {
 	// Make kill() syscall to be traced as well for more sophisticated filtering.
 	err := laterFilter.Load()
 	if err != nil {
-		LogError("ScmpFilter.Load (2): ", err)
+		utils.LogError("ScmpFilter.Load (2): ", err)
 	}
 	laterFilter.Release()
 }
@@ -561,16 +561,16 @@ func main() {
 	flag.Parse()
 
 	if noop {
-		LogDebug("NOOP MODE: doing nothing! (debug/watch are disabled, too)")
+		utils.LogDebug("NOOP MODE: doing nothing! (debug/watch are disabled, too)")
 		debug = false
 		watch = false
 	} else {
 		if debug {
-			LogDebug("DEBUG MODE: showing all details")
+			utils.LogDebug("DEBUG MODE: showing all details")
 			watch = false
 		}
 		if watch {
-			LogDebug("WATCH MODE: all syscalls are ALLOWED but it shows which ones will be blocked by the current policy.")
+			utils.LogDebug("WATCH MODE: all syscalls are ALLOWED but it shows which ones will be blocked by the current policy.")
 		}
 	}
 
@@ -578,12 +578,12 @@ func main() {
 		/* The parent. */
 
 		if flag.NArg() < 1 {
-			LogError("Main: Not enough command-line arguments. See the docs.")
+			utils.LogError("Main: Not enough command-line arguments. See the docs.")
 		}
 
 		policyInst, err = policy.GeneratePolicyFromYAML(l, policyFile)
 		if err != nil {
-			LogError("GeneratePolicy: %s", err)
+			utils.LogError("GeneratePolicy: %s", err)
 		}
 
 		/* Initialize fork/exec of the child. */
@@ -620,7 +620,7 @@ func main() {
 			},
 		})
 		if err != nil {
-			LogError("ForkExec(\"%s\"): %s", args[0], err)
+			utils.LogError("ForkExec(\"%s\"): %s", args[0], err)
 		}
 		if noop {
 			var status syscall.WaitStatus
@@ -634,7 +634,7 @@ func main() {
 
 		policyInst, err = policy.GeneratePolicyFromYAML(l, policyFile)
 		if err != nil {
-			LogError("GeneratePolicy: %s", err)
+			utils.LogError("GeneratePolicy: %s", err)
 		}
 
 		// syscall.RawSyscall(syscall.SYS_PRCTL, syscall.PR_SET_PTRACER, uintptr(os.Getppid()), 0)
@@ -656,13 +656,13 @@ func main() {
 		// Replace myself with the language runtime.
 		binaryPath, err := exec.LookPath(flag.Arg(0))
 		if err != nil {
-			LogError("LookPath: ", err)
+			utils.LogError("LookPath: ", err)
 		}
 		err = syscall.Exec(binaryPath, flag.Args()[0:], os.Environ())
 
 		// NOTE: "function not implemented" errors here may be due to above codes.
 
-		LogError("Exec(\"%s\"): %s\nNOTE: You need to provide the absolute path.", flag.Arg(0), err)
+		utils.LogError("Exec(\"%s\"): %s\nNOTE: You need to provide the absolute path.", flag.Arg(0), err)
 
 	}
 }
