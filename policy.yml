@@ -4,7 +4,7 @@
 
 whitelist_paths:
   OP_OPEN: ["*"]
-  OP_ACCESS: ["/home/*","/usr/*","/proc/*","/etc/*","/lib/*"]
+  OP_ACCESS: ["*"]
   OP_EXEC: ["*"]
   OP_STAT: ["*"]
   OP_CHMOD: ["/home/work/*", "/tmp/*"]
@@ -18,4 +18,4 @@ diff_to_default: true
 
 # Following syscalls are blindly allowed.
 # IMPORTANT: ptrace MUST NOT be included!
-allowed_syscalls: 
+allowed_syscalls: #["access", "openat", "stat", "clone", "readlink", "faccessat", "lstat", "kill"]
