@@ -20,10 +20,15 @@ import (
 	"path/filepath"
 	"runtime"
 	"syscall"
+	"time"
+
+	"policy"
+	"utils"
+	"tracer"
 
 	"github.com/fatih/color"
-	"github.com/lablup/backend.ai-jail/policy"
-	"github.com/lablup/backend.ai-jail/utils"
+	//"github.com/lablup/backend.ai-jail/policy"
+	//"github.com/lablup/backend.ai-jail/utils"
 	seccomp "github.com/seccomp/libseccomp-golang"
 )
 
@@ -35,6 +40,8 @@ var (
 	intraJailPath  = myExecPath
 	arch, _        = seccomp.GetNativeArch()
 	id_Open, _     = seccomp.GetSyscallFromNameByArch("open", arch)
+	id_Stat, _     = seccomp.GetSyscallFromNameByArch("stat", arch)
+	id_OpenAt, _   = seccomp.GetSyscallFromNameByArch("openat", arch)
 	id_Access, _   = seccomp.GetSyscallFromNameByArch("access", arch)
 	id_Clone, _    = seccomp.GetSyscallFromNameByArch("clone", arch)
 	id_Fork, _     = seccomp.GetSyscallFromNameByArch("fork", arch)
@@ -60,34 +67,6 @@ var forkCount int = 0
 var childCount int = 1
 var maxChildCount int = 0
 
-// Ref: https://github.com/torvalds/linux/blob/master/include/uapi/linux/ptrace.h
-const PTRACE_SEIZE uintptr = 0x4206     /* Linux >= 3.4 */
-const PTRACE_INTERRUPT uintptr = 0x4207 /* Linux >= 3.4 */
-const PTRACE_LISTEN uintptr = 0x4208    /* Linux >= 3.4 */
-const PTRACE_EVENT_SECCOMP uint = 7
-const PTRACE_EVENT_STOP uint = 128
-
-const ourPtraceOpts int = (1 << PTRACE_EVENT_SECCOMP /*PTRACE_O_TRACESECCOMP*/) |
-	(1 << 20 /*PTRACE_O_EXITKILL, Linux >= 3.4 */) |
-	syscall.PTRACE_O_TRACECLONE |
-	syscall.PTRACE_O_TRACEFORK |
-	syscall.PTRACE_O_TRACEVFORK
-
-func ptraceSeize(pid int, opts int) (uintptr, error) {
-	ret, _, err := syscall.Syscall6(syscall.SYS_PTRACE, PTRACE_SEIZE, uintptr(pid), 0, uintptr(opts), 0, 0)
-	return ret, err
-}
-
-func ptraceInterrupt(pid int) (uintptr, error) {
-	ret, _, err := syscall.Syscall6(syscall.SYS_PTRACE, PTRACE_INTERRUPT, uintptr(pid), 0, 0, 0, 0)
-	return ret, err
-}
-
-func ptraceListen(pid int, sig int) (uintptr, error) {
-	ret, _, err := syscall.Syscall6(syscall.SYS_PTRACE, PTRACE_LISTEN, uintptr(pid), 0, uintptr(sig), 0, 0)
-	return ret, err
-}
-
 type WaitResult struct {
 	pid    int
 	err    error
@@ -107,6 +86,36 @@ func waitChildStop(pid int) syscall.WaitStatus {
 	return status
 }
 
+
+func waitMonitor(pid int, childrenWaits chan WaitResult) {
+	for {
+		var status syscall.WaitStatus
+		traceePid, err := syscall.Wait4(-1, &status, syscall.WALL, nil)
+
+		if err != nil {
+			switch err.(syscall.Errno) {
+			case syscall.EINTR:
+				// Retry the wait system call.
+				continue
+			case syscall.ECHILD:
+				// No child processes found. Terminate.
+				break
+			default:
+				utils.LogError("unexpected errno %s", err)
+				break
+			}
+		}
+		childrenWaits <- WaitResult{int(traceePid), err, status}
+		if status.Exited() && traceePid == pid {
+			break
+		}
+	}
+	if debug {
+		utils.LogInfo("monitoring goroutine terminating.")
+	}
+}
+
+
 func traceProcess(l *log.Logger, pid int) {
 
 	mySignals := make(chan os.Signal)
@@ -125,43 +134,18 @@ func traceProcess(l *log.Logger, pid int) {
 		return
 	}
 
-	ret, seizeErr := ptraceSeize(pid, ourPtraceOpts)
+	ret, seizeErr := tracer.PtraceSeize(pid, tracer.OurPtraceOpts)
 	if ret != 0 {
-		utils.LogError("ptraceSeize error: %d\n", seizeErr)
+		utils.LogError("PtraceSeize error: %d\n", seizeErr)
 		return
 	}
 	if debug {
 		utils.LogInfo("attached child %d\n", pid)
 	}
 
-	syscall.Kill(pid, syscall.SIGCONT)
+	go waitMonitor(pid, childrenWaits)
 
-	go func() {
-		for {
-			var status syscall.WaitStatus
-			traceePid, err := syscall.Wait4(-1, &status, syscall.WALL, nil)
-			if err != nil {
-				switch err.(syscall.Errno) {
-				case syscall.EINTR:
-					// Retry the wait system call.
-					continue
-				case syscall.ECHILD:
-					// No child processes found. Terminate.
-					break
-				default:
-					utils.LogError("unexpected errno %s", err)
-					break
-				}
-			}
-			childrenWaits <- WaitResult{int(traceePid), err, status}
-			if status.Exited() && traceePid == pid {
-				break
-			}
-		}
-		if debug {
-			utils.LogInfo("monitoring goroutine terminating.")
-		}
-	}()
+	syscall.Kill(pid, syscall.SIGCONT)
 
 loop:
 	for {
@@ -235,7 +219,7 @@ loop:
 			switch event {
 			case 0:
 				// pass
-			case PTRACE_EVENT_STOP:
+			case tracer.PTRACE_EVENT_STOP:
 				switch stopsig {
 				case syscall.SIGSTOP, syscall.SIGTSTP, syscall.SIGTTOU, syscall.SIGTTIN:
 					childStopped = true
@@ -257,7 +241,7 @@ loop:
 				}
 
 				switch eventCause {
-				case PTRACE_EVENT_SECCOMP:
+				case tracer.PTRACE_EVENT_SECCOMP:
 					var extraInfo string = ""
 					allow := true
 					// Linux syscall convention for x86_64 arch:
@@ -270,7 +254,7 @@ loop:
 					//  - r9: 6th param
 					var regs syscall.PtraceRegs
 					for {
-						err := syscall.PtraceGetRegs(result.pid, &regs)
+						err := tracer.PtraceGetRegs(result.pid, &regs)
 						if err != nil {
 							errno := err.(syscall.Errno)
 							if errno == syscall.EBUSY || errno == syscall.EFAULT || errno == syscall.ESRCH {
@@ -299,7 +283,7 @@ loop:
 						maxCount := policyInst.GetMaxChildProcs()
 						allow = allow && (maxCount == -1 || childCount < maxCount)
 						if debug {
-							l.Printf("fork owner: %s\n", execPath)
+							utils.LogInfo("fork owner: %s\n",execPath)
 						}
 					case id_Tgkill:
 						targetTgid := int(regs.Rdi)
@@ -345,6 +329,7 @@ loop:
 						pathPtr := uintptr(regs.Rdi)
 						path := utils.ReadString(result.pid, pathPtr)
 						path = utils.GetAbsPathAs(path, result.pid)
+						utils.LogDebug(path)
 						// rsi is flags
 						mode := int(regs.Rdx)
 						allow = policyInst.CheckPathOp(path, policy.OP_OPEN, mode)
@@ -389,7 +374,7 @@ loop:
 							// Block the system call with permission error
 							regs.Orig_rax = 0xFFFFFFFFFFFFFFFF // -1
 							regs.Rax = 0xFFFFFFFFFFFFFFFF - uint64(syscall.EPERM) + 1
-							syscall.PtraceSetRegs(result.pid, &regs)
+							tracer.PtraceSetRegs(result.pid,&regs)
 						}
 					} else {
 						if debug {
@@ -403,11 +388,11 @@ loop:
 							color.Unset()
 						}
 					}
-				case syscall.PTRACE_EVENT_CLONE,
-					syscall.PTRACE_EVENT_FORK,
-					syscall.PTRACE_EVENT_VFORK:
-					childPid, _ := syscall.PtraceGetEventMsg(result.pid)
-					ptraceSeize(int(childPid), ourPtraceOpts)
+				case tracer.PTRACE_EVENT_CLONE,
+					tracer.PTRACE_EVENT_FORK,
+					tracer.PTRACE_EVENT_VFORK:
+					childPid, _ := tracer.PtraceGetEventMsg(result.pid)
+					tracer.PtraceSeize(int(childPid), tracer.OurPtraceOpts)
 					childCount++
 					if maxChildCount < childCount {
 						maxChildCount = childCount
@@ -416,7 +401,7 @@ loop:
 						utils.LogInfo("Attached to new child %d\n", childPid)
 						utils.LogInfo("childCount is now %d\n", childCount)
 					}
-				case PTRACE_EVENT_STOP:
+				case tracer.PTRACE_EVENT_STOP:
 					// already processed above
 				case 0:
 					// ignore
@@ -436,9 +421,7 @@ loop:
 				if !childStopped {
 					signalToChild = stopsig
 					if debug {
-						color.Set(color.FgCyan)
-						l.Printf("Injecting unhandled signal: %s", signalToChild)
-						color.Unset()
+						utils.LogInfo("Injecting unhandled signal: %s",signalToChild)
 					}
 				}
 			}
@@ -449,12 +432,12 @@ loop:
 				if debug {
 					utils.LogDebug("ptrace-listen")
 				}
-				_, err = ptraceListen(result.pid, 0)
+				_, err = tracer.PtraceListen(result.pid, 0)
 			} else {
 				if debug {
 					utils.LogDebug("ptrace-cont")
 				}
-				err = syscall.PtraceCont(result.pid, int(signalToChild))
+				err = tracer.PtraceCont(result.pid, int(signalToChild))
 			}
 			if err != nil && err.(syscall.Errno) != 0 {
 				utils.LogError("ptrace-continue error %s", err)
@@ -463,8 +446,8 @@ loop:
 					break loop
 				}
 			}
-		} /* endselect */
-	} /* endloop */
+		} // endselect
+	} // endloop
 }
 
 func init() {
@@ -493,29 +476,6 @@ func handleExit() {
 	}
 }
 
-/*
-func LogInfo(message string, args ...interface{}) {
-	l := log.New(os.Stderr, "", 0)
-	color.Set(color.FgBlue)
-	l.Printf(message, args...)
-	color.Unset()
-}
-
-func LogDebug(message string, args ...interface{}) {
-	l := log.New(os.Stderr, "", 0)
-	color.Set(color.FgYellow)
-	l.Printf(message, args...)
-	color.Unset()
-}
-
-func LogError(message string, args ...interface{}) {
-	l := log.New(os.Stderr, "", 0)
-	color.Set(color.FgRed)
-	l.Printf(message, args...)
-	color.Unset()
-	l.Panic("")
-}
-*/
 
 func InitializeFilter() {
 
@@ -537,11 +497,12 @@ func InitializeFilter() {
 	for _, syscallName := range killSyscalls {
 		scId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
 		if err == nil {
+			// if not ActAllow child process not stopped :D
 			laterFilter.AddRuleExact(scId, seccomp.ActTrace)
 		}
 	}
-	laterFilter.SetNoNewPrivsBit(true)
 
+	laterFilter.SetNoNewPrivsBit(true)
 	// Now we have the working tracer parent.
 	// Make kill() syscall to be traced as well for more sophisticated filtering.
 	err := laterFilter.Load()
@@ -551,13 +512,20 @@ func InitializeFilter() {
 	laterFilter.Release()
 }
 
-func main() {
-	var err error
-	defer handleExit()
+func ExecuteProcess() {
+	// Replace myself with the language runtime.
+	binaryPath, err := exec.LookPath(flag.Arg(0))
+	if err != nil {
+		utils.LogError("LookPath: %s", err)
+	}
+	err = syscall.Exec(binaryPath, flag.Args()[0:], os.Environ())
 
-	syscall.Umask(0022)
+	// NOTE: "function not implemented" errors here may be due to above codes.
+	utils.LogError("Exec(\"%s\"): %s\nNOTE: You need to provide the absolute path.", flag.Arg(0), err)
+}
 
-	l := log.New(os.Stderr, "", 0)
+func SettingJailFlag() {
+
 	flag.Parse()
 
 	if noop {
@@ -573,6 +541,17 @@ func main() {
 			utils.LogDebug("WATCH MODE: all syscalls are ALLOWED but it shows which ones will be blocked by the current policy.")
 		}
 	}
+}
+
+func main() {
+	var err error
+	defer handleExit()
+
+	syscall.Umask(0022)
+
+	l := log.New(os.Stderr,"",0)
+
+	SettingJailFlag()
 
 	if !childMode {
 		/* The parent. */
@@ -581,12 +560,13 @@ func main() {
 			utils.LogError("Main: Not enough command-line arguments. See the docs.")
 		}
 
-		policyInst, err = policy.GeneratePolicyFromYAML(l, policyFile)
+		policyInst, err = policy.GeneratePolicyFromYAML(policyFile)
 		if err != nil {
-			utils.LogError("GeneratePolicy: %s", err)
+			utils.LogError("GeneratePolicy: %s",err)
 		}
 
 		/* Initialize fork/exec of the child. */
+
 		runtime.GOMAXPROCS(1)
 		runtime.LockOSThread()
 		// Locking the OS thread is required to let syscall.Wait4() work correctly
@@ -602,12 +582,7 @@ func main() {
 		envs := utils.FilterEnvs(os.Environ(), policyInst.GetPreservedEnvKeys())
 		envs = append(envs, policyInst.GetExtraEnvs()...)
 		if debug {
-			color.Set(color.FgBlue)
-			l.Printf("Environment:")
-			for _, e := range envs {
-				l.Println(e)
-			}
-			color.Unset()
+			utils.LogEnv("Environment:",envs)
 		}
 
 		var pid int
@@ -619,9 +594,11 @@ func main() {
 				Ptrace: false, // should be disabled when using ptraceSeize
 			},
 		})
+
 		if err != nil {
 			utils.LogError("ForkExec(\"%s\"): %s", args[0], err)
 		}
+
 		if noop {
 			var status syscall.WaitStatus
 			syscall.Wait4(pid, &status, syscall.WALL, nil)
@@ -632,37 +609,29 @@ func main() {
 	} else {
 		/* The child. */
 
-		policyInst, err = policy.GeneratePolicyFromYAML(l, policyFile)
-		if err != nil {
-			utils.LogError("GeneratePolicy: %s", err)
-		}
+		// Waiting...
+		// Inform the parent that I'm ready to continue.
+		// Any code before this line code must use only non-traced system calls in
+		// the filter because the tracer has not set up itself yet.
+		// (traced syscalls will cause ENOSYS "function not implemented" error)
+		syscall.Kill(os.Getpid(), syscall.SIGSTOP)
 
-		// syscall.RawSyscall(syscall.SYS_PRCTL, syscall.PR_SET_PTRACER, uintptr(os.Getppid()), 0)
+		// Wait amount of time until parent process ready to trace syscall.
+		// It seems to be naive solution. But it works fine.
+		time.Sleep(1 * time.Millisecond)
 
 		if !noop {
 
-			InitializeFilter()
+			policyInst, err = policy.GeneratePolicyFromYAML(policyFile)
+			if err != nil {
+				utils.LogError("GeneratePolicy: %s", err)
+			}
 
-			// Inform the parent that I'm ready to continue.
-			// Any code before this line code must use only non-traced system calls in
-			// the filter because the tracer has not set up itself yet.
-			// (traced syscalls will cause ENOSYS "function not implemented" error)
-			syscall.Kill(os.Getpid(), syscall.SIGSTOP)
+			InitializeFilter()
 		}
 
 		// NOTE: signal.Reset() here causes race conditions with the tracer.
 		// (syscall tracing doesn't work deterministically with it.)
-
-		// Replace myself with the language runtime.
-		binaryPath, err := exec.LookPath(flag.Arg(0))
-		if err != nil {
-			utils.LogError("LookPath: ", err)
-		}
-		err = syscall.Exec(binaryPath, flag.Args()[0:], os.Environ())
-
-		// NOTE: "function not implemented" errors here may be due to above codes.
-
-		utils.LogError("Exec(\"%s\"): %s\nNOTE: You need to provide the absolute path.", flag.Arg(0), err)
-
+		ExecuteProcess()
 	}
 }
