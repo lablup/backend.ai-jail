@@ -102,7 +102,7 @@ func init() {
 		"fork",
 		"vfork",
 		"clone",
-		//"execve",
+		"execve",
 		// "kill"-related syscalls will be added by children
 	}
 

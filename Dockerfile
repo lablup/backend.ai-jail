@@ -1,6 +1,7 @@
 FROM golang:1.8-alpine
 # This container is for daily development.
 
+RUN apk --update add strace
 RUN apk add --no-cache build-base git libseccomp-dev linux-headers
 RUN go get github.com/seccomp/libseccomp-golang && \
     go get github.com/fatih/color && \

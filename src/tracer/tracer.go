@@ -15,12 +15,20 @@ const PTRACE_EVENT_STOP uint = 128
 const PTRACE_EVENT_CLONE uint = syscall.PTRACE_EVENT_CLONE
 const PTRACE_EVENT_FORK uint = syscall.PTRACE_EVENT_FORK
 const PTRACE_EVENT_VFORK uint = syscall.PTRACE_EVENT_VFORK
+const PTRACE_EVENT_EXEC uint = syscall.PTRACE_EVENT_EXEC
 
 const OurPtraceOpts int = (1 << PTRACE_EVENT_SECCOMP ) | // PTRACE_O_TRACESECCOMP
 	(1 << 20 ) | // PTRACE_O_EXITKILL, Linux >= 3.4
 	syscall.PTRACE_O_TRACECLONE |
 	syscall.PTRACE_O_TRACEFORK |
-	syscall.PTRACE_O_TRACEVFORK
+	syscall.PTRACE_O_TRACEVFORK  |
+	syscall.PTRACE_O_TRACEEXEC
+
+
+func PtraceAttach(pid int, opts int) (uintptr, error) {
+	ret, _, err := syscall.Syscall6(syscall.SYS_PTRACE, syscall.PTRACE_ATTACH, uintptr(pid), 0, uintptr(opts), 0, 0)
+	return ret, err
+}
 
 func PtraceSeize(pid int, opts int) (uintptr, error) {
 	ret, _, err := syscall.Syscall6(syscall.SYS_PTRACE, PTRACE_SEIZE, uintptr(pid), 0, uintptr(opts), 0, 0)

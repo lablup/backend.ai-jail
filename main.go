@@ -30,6 +30,9 @@ import (
 	//"github.com/lablup/backend.ai-jail/policy"
 	//"github.com/lablup/backend.ai-jail/utils"
 	seccomp "github.com/seccomp/libseccomp-golang"
+
+	"sync"
+	"github.com/sheerun/queue"
 )
 
 type Exit struct{ Code int }
@@ -67,6 +70,9 @@ var forkCount int = 0
 var childCount int = 1
 var maxChildCount int = 0
 
+var msgQueue *queue.Queue
+var wg sync.WaitGroup
+
 type WaitResult struct {
 	pid    int
 	err    error
@@ -85,7 +91,6 @@ func waitChildStop(pid int) syscall.WaitStatus {
 	}
 	return status
 }
-
 
 func waitMonitor(pid int, childrenWaits chan WaitResult) {
 	for {
@@ -116,6 +121,7 @@ func waitMonitor(pid int, childrenWaits chan WaitResult) {
 }
 
 func handlingMySignal(pid int, signal os.Signal) bool{
+
 	switch signal {
 	case os.Interrupt, syscall.SIGTERM:
 		// Terminate all my children.
@@ -183,6 +189,8 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 	childStopped := false
 	event := uint(result.status) >> 16
 
+	msgQueue.Append(event)
+
 	switch event {
 	case 0:
 		// pass
@@ -202,6 +210,7 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 	case syscall.SIGSTOP:
 		// pass
 	case syscall.SIGTRAP:
+
 		eventCause := ((uint(result.status) >> 8) & (^uint(syscall.SIGTRAP))) >> 8
 		if debug {
 			utils.LogDebug("event-cause: %d\n", eventCause)
@@ -358,7 +367,7 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 			tracer.PTRACE_EVENT_FORK,
 			tracer.PTRACE_EVENT_VFORK:
 			childPid, _ := tracer.PtraceGetEventMsg(result.pid)
-			tracer.PtraceSeize(int(childPid), tracer.OurPtraceOpts)
+			tracer.PtraceSeize(pid, tracer.OurPtraceOpts)
 			childCount++
 			if maxChildCount < childCount {
 				maxChildCount = childCount
@@ -366,6 +375,10 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 			if debug {
 				utils.LogInfo("Attached to new child %d\n", childPid)
 				utils.LogInfo("childCount is now %d\n", childCount)
+			}
+		case tracer.PTRACE_EVENT_EXEC:
+			if debug {
+				utils.LogDebug("Exec Catched")
 			}
 		case tracer.PTRACE_EVENT_STOP:
 			// already processed above
@@ -405,6 +418,7 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 		}
 		err = tracer.PtraceCont(result.pid, int(signalToChild))
 	}
+
 	if err != nil && err.(syscall.Errno) != 0 {
 		utils.LogError("ptrace-continue error %s", err)
 		errno := err.(syscall.Errno)
@@ -419,6 +433,9 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 func traceProcess(l *log.Logger, pid int) {
 
 	var isTerminated bool
+	var isTerminated2 bool
+
+	msgQueue = queue.New()
 
 	mySignals := make(chan os.Signal)
 	childrenWaits := make(chan WaitResult)
@@ -441,8 +458,9 @@ func traceProcess(l *log.Logger, pid int) {
 		utils.LogError("PtraceSeize error: %d\n", seizeErr)
 		return
 	}
+
 	if debug {
-		utils.LogInfo("attached child %d\n", pid)
+		utils.LogDebug("attached child %d\n", pid)
 	}
 
 	syscall.Kill(pid, syscall.SIGCONT)
@@ -460,9 +478,9 @@ loop:
 			}
 
 		case result := <-childrenWaits:
-			isTerminated = monitoringSyscall(pid,result)
+			isTerminated2 = monitoringSyscall(pid,result)
 
-			if isTerminated == true {
+			if isTerminated2 == true {
 				break loop
 			}
 		} // endselect
@@ -497,7 +515,6 @@ func handleExit() {
 
 
 func InitializeFilter() {
-
 	arch, _ := seccomp.GetNativeArch()
 	laterFilter, _ := seccomp.NewFilter(seccomp.ActErrno.SetReturnCode(int16(syscall.EPERM)))
 	for _, syscallName := range policyInst.GetAllowedSyscalls() {
@@ -586,7 +603,7 @@ func main() {
 
 		/* Initialize fork/exec of the child. */
 
-		runtime.GOMAXPROCS(1)
+		runtime.GOMAXPROCS(20)
 		runtime.LockOSThread()
 		// Locking the OS thread is required to let syscall.Wait4() work correctly
 		// because waitpid() only monitors the caller's direct children, not
@@ -637,7 +654,7 @@ func main() {
 
 		// Wait amount of time until parent process ready to trace syscall.
 		// It seems to be naive solution. But it works fine.
-		time.Sleep(40 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 
 		if !noop {
 
