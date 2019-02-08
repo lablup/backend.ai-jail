@@ -12,10 +12,10 @@ exec_allowance: -1
 fork_allowance: -1
 max_child_procs: 32
 extra_envs: []
-preserved_env_keys: ["HOME", "PATH", "LANG", "PYENV_ROOT", "PYTHONPATH", "LD_PRELOAD"]
+preserved_env_keys: ["HOME", "PATH", "LANG", "USER", "SHELL","TERM", "LD_LIBRARY_PATH", "LD_PRELOAD", "MPLCONFIGDIR", "OPENBLAS_NUM_THREADS"]
 
 diff_to_default: true
 
 # Following syscalls are blindly allowed.
 # IMPORTANT: ptrace MUST NOT be included!
-allowed_syscalls: ["clone"] #["open", "openat", "stat", "lstat"] #["access", "openat", "stat", "clone", "readlink", "faccessat", "lstat", "kill"]
+allowed_syscalls: #["access", "openat", "stat", "clone", "readlink", "faccessat", "lstat", "kill"]

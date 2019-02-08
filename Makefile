@@ -13,6 +13,7 @@ musllinux:
 	mv backend.ai-jail build-musllinux/jail
 
 inside-container:
+	export GOPATH=/go/src/github.com/lablup/backend.ai-jail
 	go build -tags netgo -ldflags '-extldflags "-static"' -v
 
 prepare-dev:

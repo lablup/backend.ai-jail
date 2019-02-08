@@ -21,7 +21,7 @@ const OurPtraceOpts int = (1 << PTRACE_EVENT_SECCOMP ) | // PTRACE_O_TRACESECCOM
 	(1 << 20 ) | // PTRACE_O_EXITKILL, Linux >= 3.4
 	syscall.PTRACE_O_TRACECLONE |
 	syscall.PTRACE_O_TRACEFORK |
-	syscall.PTRACE_O_TRACEVFORK  |
+	syscall.PTRACE_O_TRACEVFORK |
 	syscall.PTRACE_O_TRACEEXEC
 
 

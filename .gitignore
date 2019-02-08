@@ -23,7 +23,7 @@ _testmain.go
 *.exe
 *.test
 *.prof
-*.text
+*.txt
 
 build*/
 backend.ai-jail

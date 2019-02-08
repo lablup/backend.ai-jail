@@ -20,7 +20,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"syscall"
-	"time"
 
 	"policy"
 	"utils"
@@ -31,8 +30,6 @@ import (
 	//"github.com/lablup/backend.ai-jail/utils"
 	seccomp "github.com/seccomp/libseccomp-golang"
 
-	"sync"
-	"github.com/sheerun/queue"
 )
 
 type Exit struct{ Code int }
@@ -70,9 +67,6 @@ var forkCount int = 0
 var childCount int = 1
 var maxChildCount int = 0
 
-var msgQueue *queue.Queue
-var wg sync.WaitGroup
-
 type WaitResult struct {
 	pid    int
 	err    error
@@ -93,8 +87,8 @@ func waitChildStop(pid int) syscall.WaitStatus {
 }
 
 func waitMonitor(pid int, childrenWaits chan WaitResult) {
+	var status syscall.WaitStatus
 	for {
-		var status syscall.WaitStatus
 		traceePid, err := syscall.Wait4(-1, &status, syscall.WALL, nil)
 
 		if err != nil {
@@ -111,6 +105,7 @@ func waitMonitor(pid int, childrenWaits chan WaitResult) {
 			}
 		}
 		childrenWaits <- WaitResult{int(traceePid), err, status}
+		//msgQueue.Append(childrenWaits)
 		if status.Exited() && traceePid == pid {
 			break
 		}
@@ -188,8 +183,6 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 
 	childStopped := false
 	event := uint(result.status) >> 16
-
-	msgQueue.Append(event)
 
 	switch event {
 	case 0:
@@ -420,6 +413,8 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 	}
 
 	if err != nil && err.(syscall.Errno) != 0 {
+		utils.LogDebug("pid : %d | result.PID : %d",pid,result.pid)
+		utils.LogDebug("Parent pid : %d",syscall.Getpid())
 		utils.LogError("ptrace-continue error %s", err)
 		errno := err.(syscall.Errno)
 		if errno == syscall.EBUSY || errno == syscall.EFAULT || errno == syscall.ESRCH {
@@ -435,10 +430,10 @@ func traceProcess(l *log.Logger, pid int) {
 	var isTerminated bool
 	var isTerminated2 bool
 
-	msgQueue = queue.New()
+	//msgQueue = queue.New()
 
-	mySignals := make(chan os.Signal)
-	childrenWaits := make(chan WaitResult)
+	mySignals := make(chan os.Signal, 100)
+	childrenWaits := make(chan WaitResult, 100)
 
 	signal.Notify(mySignals, os.Interrupt, syscall.SIGTERM)
 	signal.Ignore(syscall.SIGSTOP)
@@ -463,24 +458,27 @@ func traceProcess(l *log.Logger, pid int) {
 		utils.LogDebug("attached child %d\n", pid)
 	}
 
+
 	syscall.Kill(pid, syscall.SIGCONT)
 
-	go waitMonitor(pid, childrenWaits)
+	go waitMonitor(pid,childrenWaits)
 
 loop:
 	for {
 		select {
 		case mysig := <-mySignals:
 			isTerminated = handlingMySignal(pid,mysig)
+			//go handlingMySignal(pid,mysig)
 
-			if isTerminated == true {
+			if true == isTerminated {
 				break loop
 			}
 
 		case result := <-childrenWaits:
 			isTerminated2 = monitoringSyscall(pid,result)
+			//go monitoringSyscall(pid,result)
 
-			if isTerminated2 == true {
+			if true == isTerminated2 {
 				break loop
 			}
 		} // endselect
@@ -526,7 +524,8 @@ func InitializeFilter() {
 	for _, syscallName := range policyInst.GetTracedSyscalls() {
 		syscallId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
 		if err == nil {
-			laterFilter.AddRuleExact(syscallId, seccomp.ActTrace)
+			//laterFilter.AddRuleExact(syscallId, seccomp.ActTrace)
+			laterFilter.AddRuleExact(syscallId, seccomp.ActAllow)
 		}
 	}
 	killSyscalls := []string{"kill", "killpg", "tkill", "tgkill"}
@@ -534,7 +533,8 @@ func InitializeFilter() {
 		scId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
 		if err == nil {
 			// if not ActAllow child process not stopped :D
-			laterFilter.AddRuleExact(scId, seccomp.ActTrace)
+			//laterFilter.AddRuleExact(scId, seccomp.ActTrace)
+			laterFilter.AddRuleExact(scId, seccomp.ActAllow)
 		}
 	}
 
@@ -603,7 +603,7 @@ func main() {
 
 		/* Initialize fork/exec of the child. */
 
-		runtime.GOMAXPROCS(20)
+		runtime.GOMAXPROCS(1)
 		runtime.LockOSThread()
 		// Locking the OS thread is required to let syscall.Wait4() work correctly
 		// because waitpid() only monitors the caller's direct children, not
@@ -654,7 +654,6 @@ func main() {
 
 		// Wait amount of time until parent process ready to trace syscall.
 		// It seems to be naive solution. But it works fine.
-		time.Sleep(10 * time.Millisecond)
 
 		if !noop {
 
