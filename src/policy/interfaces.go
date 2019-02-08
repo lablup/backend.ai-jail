@@ -42,10 +42,18 @@ func init() {
 		"OP_CHMOD":  OP_CHMOD,
 	}
 	defaultConf.WhitelistPaths = map[PathOps][]PatternMatcher{
-		OP_OPEN:   []PatternMatcher{PatternMatcher{glob.MustCompile("*")}},
-		OP_ACCESS: []PatternMatcher{PatternMatcher{glob.MustCompile("*")}},
-		OP_EXEC:   []PatternMatcher{PatternMatcher{glob.MustCompile("*")}},
-		OP_STAT:   []PatternMatcher{PatternMatcher{glob.MustCompile("*")}},
+		OP_OPEN:   []PatternMatcher{
+			PatternMatcher{glob.MustCompile("*")},
+		},
+		OP_ACCESS: []PatternMatcher{
+			PatternMatcher{glob.MustCompile("*")},
+		},
+		OP_EXEC: []PatternMatcher{
+			PatternMatcher{glob.MustCompile("*")},
+		},
+		OP_STAT: []PatternMatcher{
+			PatternMatcher{glob.MustCompile("*")},
+		},
 		OP_CHMOD: []PatternMatcher{
 			PatternMatcher{glob.MustCompile("/home/work/*")},
 			PatternMatcher{glob.MustCompile("/tmp/*")},
@@ -374,6 +382,6 @@ func init() {
 		"seccomp",
 		"statx",
 		"adjtimex",
-		//"clone",
+		"clone",
 	}
 }

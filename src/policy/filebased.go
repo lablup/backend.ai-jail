@@ -64,6 +64,7 @@ func (p FileBasedPolicy) CheckPathOp(path string, op PathOps, mode int) bool {
 	return false
 }
 
+
 func (p FileBasedPolicy) GetExecAllowance() int {
 	return p.conf.ExecAllowance
 }

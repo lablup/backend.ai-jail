@@ -369,10 +369,6 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 				utils.LogInfo("Attached to new child %d\n", childPid)
 				utils.LogInfo("childCount is now %d\n", childCount)
 			}
-		case tracer.PTRACE_EVENT_EXEC:
-			if debug {
-				utils.LogDebug("Exec Catched")
-			}
 		case tracer.PTRACE_EVENT_STOP:
 			// already processed above
 		case 0:
@@ -524,8 +520,7 @@ func InitializeFilter() {
 	for _, syscallName := range policyInst.GetTracedSyscalls() {
 		syscallId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
 		if err == nil {
-			//laterFilter.AddRuleExact(syscallId, seccomp.ActTrace)
-			laterFilter.AddRuleExact(syscallId, seccomp.ActAllow)
+			laterFilter.AddRuleExact(syscallId, seccomp.ActTrace)
 		}
 	}
 	killSyscalls := []string{"kill", "killpg", "tkill", "tgkill"}
@@ -533,8 +528,7 @@ func InitializeFilter() {
 		scId, err := seccomp.GetSyscallFromNameByArch(syscallName, arch)
 		if err == nil {
 			// if not ActAllow child process not stopped :D
-			//laterFilter.AddRuleExact(scId, seccomp.ActTrace)
-			laterFilter.AddRuleExact(scId, seccomp.ActAllow)
+			laterFilter.AddRuleExact(scId, seccomp.ActTrace)
 		}
 	}
 
