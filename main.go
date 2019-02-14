@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"syscall"
+	//"time"
 
 	"policy"
 	"utils"
@@ -199,6 +200,7 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 		// pass
 	}
 
+
 	switch stopsig {
 	case syscall.SIGSTOP:
 		// pass
@@ -294,7 +296,7 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 					execCount++
 				}
 				extraInfo = fmt.Sprintf("execve from %s", execPath)
-			case id_Open:
+			case id_Open, id_OpenAt:
 				pathPtr := uintptr(regs.Rdi)
 				path := utils.ReadString(result.pid, pathPtr)
 				path = utils.GetAbsPathAs(path, result.pid)
@@ -394,7 +396,9 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 		}
 	}
 
+
 	var err error
+
 	if childStopped && stopsig != syscall.SIGTRAP {
 		// may be a group-stop; we need to keep the child stopped.
 		if debug {
@@ -409,8 +413,6 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 	}
 
 	if err != nil && err.(syscall.Errno) != 0 {
-		utils.LogDebug("pid : %d | result.PID : %d",pid,result.pid)
-		utils.LogDebug("Parent pid : %d",syscall.Getpid())
 		utils.LogError("ptrace-continue error %s", err)
 		errno := err.(syscall.Errno)
 		if errno == syscall.EBUSY || errno == syscall.EFAULT || errno == syscall.ESRCH {
@@ -454,7 +456,6 @@ func traceProcess(l *log.Logger, pid int) {
 		utils.LogDebug("attached child %d\n", pid)
 	}
 
-
 	syscall.Kill(pid, syscall.SIGCONT)
 
 	go waitMonitor(pid,childrenWaits)
@@ -464,7 +465,6 @@ loop:
 		select {
 		case mysig := <-mySignals:
 			isTerminated = handlingMySignal(pid,mysig)
-			//go handlingMySignal(pid,mysig)
 
 			if true == isTerminated {
 				break loop
@@ -472,7 +472,6 @@ loop:
 
 		case result := <-childrenWaits:
 			isTerminated2 = monitoringSyscall(pid,result)
-			//go monitoringSyscall(pid,result)
 
 			if true == isTerminated2 {
 				break loop
@@ -509,6 +508,7 @@ func handleExit() {
 
 
 func InitializeFilter() {
+
 	arch, _ := seccomp.GetNativeArch()
 	laterFilter, _ := seccomp.NewFilter(seccomp.ActErrno.SetReturnCode(int16(syscall.EPERM)))
 	for _, syscallName := range policyInst.GetAllowedSyscalls() {
@@ -533,6 +533,8 @@ func InitializeFilter() {
 	}
 
 	laterFilter.SetNoNewPrivsBit(true)
+
+	syscall.Kill(os.Getpid(), syscall.SIGSTOP)
 	// Now we have the working tracer parent.
 	// Make kill() syscall to be traced as well for more sophisticated filtering.
 	err := laterFilter.Load()
@@ -597,7 +599,7 @@ func main() {
 
 		/* Initialize fork/exec of the child. */
 
-		runtime.GOMAXPROCS(1)
+		runtime.GOMAXPROCS(10)
 		runtime.LockOSThread()
 		// Locking the OS thread is required to let syscall.Wait4() work correctly
 		// because waitpid() only monitors the caller's direct children, not
@@ -644,7 +646,9 @@ func main() {
 		// Any code before this line code must use only non-traced system calls in
 		// the filter because the tracer has not set up itself yet.
 		// (traced syscalls will cause ENOSYS "function not implemented" error)
-		syscall.Kill(os.Getpid(), syscall.SIGSTOP)
+		//syscall.Kill(os.Getpid(), syscall.SIGSTOP)
+
+		//time.Sleep(10 * time.Millisecond)
 
 		// Wait amount of time until parent process ready to trace syscall.
 		// It seems to be naive solution. But it works fine.
