@@ -8,8 +8,6 @@ RUN go get github.com/seccomp/libseccomp-golang && \
     go get github.com/gobwas/glob && \
     go get gopkg.in/yaml.v2
 
-ADD ./mbox /go/src/github.com/lablup/backend.ai-jail/mbox
-
 # When running this image, mount the working copy root to
 # /go/src/github.com/lablup/backend.ai-jail
 

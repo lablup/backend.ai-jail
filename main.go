@@ -188,7 +188,7 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 	switch event {
 	case 0:
 		// pass
-	case tracer.PTRACE_EVENT_STOP:
+	case tracer.PTRACE_EVENT_STOP, tracer.PTRACE_EVENT_SECCOMP:
 		switch stopsig {
 		case syscall.SIGSTOP, syscall.SIGTSTP, syscall.SIGTTOU, syscall.SIGTTIN:
 			childStopped = true
@@ -196,10 +196,16 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 				utils.LogDebug("group-stop detected")
 			}
 		}
+	case syscall.PTRACE_EVENT_EXEC:
+		//tracer.PtraceSeize(pid, tracer.OurPtraceOpts)
 	default:
 		// pass
 	}
 
+	//var regs2 syscall.PtraceRegs
+	//tracer.PtraceGetRegs(result.pid, &regs2)
+	//utils.LogDebug("RAX : %d\n",regs2.Rax);
+	//utils.LogDebug("Orig RAX : %d\n",regs2.Orig_rax);
 
 	switch stopsig {
 	case syscall.SIGSTOP:
@@ -223,17 +229,19 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 			//  - r10: 4th param
 			//  - r8: 5th param
 			//  - r9: 6th param
+
 			var regs syscall.PtraceRegs
 			for {
 				err := tracer.PtraceGetRegs(result.pid, &regs)
 				if err != nil {
 					errno := err.(syscall.Errno)
-					if errno == syscall.EBUSY || errno == syscall.EFAULT || errno == syscall.ESRCH {
+					if errno == syscall.EBUSY || errno == syscall.EFAULT || errno == syscall.ESRCH  {
 						continue
 					}
 				}
 				break
 			}
+
 			syscallId := uint(regs.Orig_rax)
 			if debug {
 				sn, _ := seccomp.ScmpSyscall(syscallId).GetName()
@@ -296,8 +304,16 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 					execCount++
 				}
 				extraInfo = fmt.Sprintf("execve from %s", execPath)
-			case id_Open, id_OpenAt:
+			case id_Open:
 				pathPtr := uintptr(regs.Rdi)
+				path := utils.ReadString(result.pid, pathPtr)
+				path = utils.GetAbsPathAs(path, result.pid)
+				// rsi is flags
+				mode := int(regs.Rdx)
+				allow = policyInst.CheckPathOp(path, policy.OP_OPEN, mode)
+				extraInfo = path
+			case id_OpenAt:
+				pathPtr := uintptr(regs.Rsi)
 				path := utils.ReadString(result.pid, pathPtr)
 				path = utils.GetAbsPathAs(path, result.pid)
 				// rsi is flags
@@ -373,6 +389,7 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 			}
 		case tracer.PTRACE_EVENT_STOP:
 			// already processed above
+		case tracer.PTRACE_EVENT_EXEC:
 		case 0:
 			// ignore
 		default:
@@ -428,8 +445,6 @@ func traceProcess(l *log.Logger, pid int) {
 	var isTerminated bool
 	var isTerminated2 bool
 
-	//msgQueue = queue.New()
-
 	mySignals := make(chan os.Signal, 100)
 	childrenWaits := make(chan WaitResult, 100)
 
@@ -438,6 +453,7 @@ func traceProcess(l *log.Logger, pid int) {
 	signal.Ignore(syscall.SIGTTOU)
 	signal.Ignore(syscall.SIGTTIN)
 	signal.Ignore(syscall.SIGTSTP)
+
 
 	// Child is first-stopped.
 	status := waitChildStop(pid)
@@ -462,6 +478,11 @@ func traceProcess(l *log.Logger, pid int) {
 
 loop:
 	for {
+		//var regs2 syscall.PtraceRegs
+		//tracer.PtraceGetRegs(pid, &regs2)
+		//utils.LogDebug("RAX : %d\n",regs2.Rax);
+		//utils.LogDebug("Orig RAX : %d\n",regs2.Orig_rax);
+
 		select {
 		case mysig := <-mySignals:
 			isTerminated = handlingMySignal(pid,mysig)
@@ -535,6 +556,7 @@ func InitializeFilter() {
 	laterFilter.SetNoNewPrivsBit(true)
 
 	syscall.Kill(os.Getpid(), syscall.SIGSTOP)
+
 	// Now we have the working tracer parent.
 	// Make kill() syscall to be traced as well for more sophisticated filtering.
 	err := laterFilter.Load()
@@ -599,7 +621,7 @@ func main() {
 
 		/* Initialize fork/exec of the child. */
 
-		runtime.GOMAXPROCS(10)
+		runtime.GOMAXPROCS(1)
 		runtime.LockOSThread()
 		// Locking the OS thread is required to let syscall.Wait4() work correctly
 		// because waitpid() only monitors the caller's direct children, not

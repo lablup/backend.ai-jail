@@ -120,6 +120,7 @@ func init() {
 		"execve",
 		"execveat",
 		// blindly allowed
+		"prlimit64",
 		"read",
 		"readv",
 		"preadv",

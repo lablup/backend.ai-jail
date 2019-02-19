@@ -2,6 +2,7 @@ package tracer
 
 import (
 	"syscall"
+	"unsafe"
 )
 
 // Ref: https://github.com/torvalds/linux/blob/master/include/uapi/linux/ptrace.h
@@ -15,12 +16,14 @@ const PTRACE_EVENT_STOP uint = 128
 const PTRACE_EVENT_CLONE uint = syscall.PTRACE_EVENT_CLONE
 const PTRACE_EVENT_FORK uint = syscall.PTRACE_EVENT_FORK
 const PTRACE_EVENT_VFORK uint = syscall.PTRACE_EVENT_VFORK
+const PTRACE_EVENT_EXEC uint = syscall.PTRACE_EVENT_EXEC
 
 const OurPtraceOpts int = (1 << PTRACE_EVENT_SECCOMP ) | // PTRACE_O_TRACESECCOMP
 	(1 << 20 ) | // PTRACE_O_EXITKILL, Linux >= 3.4
 	syscall.PTRACE_O_TRACECLONE |
 	syscall.PTRACE_O_TRACEFORK |
-	syscall.PTRACE_O_TRACEVFORK
+	syscall.PTRACE_O_TRACEVFORK |
+	syscall.PTRACE_O_TRACEEXEC
 
 
 func PtraceAttach(pid int, opts int) (uintptr, error) {
@@ -41,6 +44,16 @@ func PtraceInterrupt(pid int) (uintptr, error) {
 func PtraceListen(pid int, sig int) (uintptr, error) {
 	ret, _, err := syscall.Syscall6(syscall.SYS_PTRACE, PTRACE_LISTEN, uintptr(pid), 0, uintptr(sig), 0, 0)
 	return ret, err
+}
+
+func PtraceGetSigInfo(pid int, siginfo [16]uint64) (uintptr, error) {
+	psig := &siginfo[0]
+	ret, _, err := syscall.Syscall6(syscall.SYS_PTRACE, syscall.PTRACE_GETSIGINFO, uintptr(pid), 0, uintptr(unsafe.Pointer(psig)), 0, 0)
+	return ret, err
+}
+
+func PtraceSyscall(pid int, signal int) (err error) {
+	return syscall.PtraceSyscall(pid,signal)
 }
 
 func PtraceCont(pid int, signal int) (err error) {
