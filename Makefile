@@ -20,5 +20,9 @@ prepare-dev:
 	docker build -f Dockerfile -t jail-dev .
 	docker create -i -t -v "$(shell pwd)":$(CONTAINER_WORKDIR) -w $(CONTAINER_WORKDIR) --security-opt=seccomp:unconfined --security-opt=apparmor:unconfined --name jail-dev jail-dev
 
+test-dev:
+	docker build -f Dockerfile -t test-dev .
+	docker create -i -t -v "$(shell pwd)":$(CONTAINER_WORKDIR) -w $(CONTAINER_WORKDIR) --security-opt=seccomp:unconfined --security-opt=apparmor:un      confined --name test-dev test-dev
+
 clean:
 	docker rm jail-dev

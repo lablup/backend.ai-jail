@@ -3,6 +3,9 @@ FROM golang:1.8-alpine
 
 RUN apk --update add strace
 RUN apk add --no-cache build-base git libseccomp-dev linux-headers
+RUN apk add --no-cache python3 && \
+        ln -s /usr/bin/python3 /usr/bin/python
+RUN apk add --no-cache libffi libzmq
 RUN go get github.com/seccomp/libseccomp-golang && \
     go get github.com/fatih/color && \
     go get github.com/gobwas/glob && \

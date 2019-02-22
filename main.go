@@ -197,21 +197,14 @@ func monitoringSyscall(pid int, result WaitResult) bool {
 			}
 		}
 	case syscall.PTRACE_EVENT_EXEC:
-		//tracer.PtraceSeize(pid, tracer.OurPtraceOpts)
 	default:
 		// pass
 	}
-
-	//var regs2 syscall.PtraceRegs
-	//tracer.PtraceGetRegs(result.pid, &regs2)
-	//utils.LogDebug("RAX : %d\n",regs2.Rax);
-	//utils.LogDebug("Orig RAX : %d\n",regs2.Orig_rax);
 
 	switch stopsig {
 	case syscall.SIGSTOP:
 		// pass
 	case syscall.SIGTRAP:
-
 		eventCause := ((uint(result.status) >> 8) & (^uint(syscall.SIGTRAP))) >> 8
 		if debug {
 			utils.LogDebug("event-cause: %d\n", eventCause)
@@ -478,11 +471,6 @@ func traceProcess(l *log.Logger, pid int) {
 
 loop:
 	for {
-		//var regs2 syscall.PtraceRegs
-		//tracer.PtraceGetRegs(pid, &regs2)
-		//utils.LogDebug("RAX : %d\n",regs2.Rax);
-		//utils.LogDebug("Orig RAX : %d\n",regs2.Orig_rax);
-
 		select {
 		case mysig := <-mySignals:
 			isTerminated = handlingMySignal(pid,mysig)
@@ -621,7 +609,7 @@ func main() {
 
 		/* Initialize fork/exec of the child. */
 
-		runtime.GOMAXPROCS(1)
+		runtime.GOMAXPROCS(100)
 		runtime.LockOSThread()
 		// Locking the OS thread is required to let syscall.Wait4() work correctly
 		// because waitpid() only monitors the caller's direct children, not
