@@ -16,6 +16,8 @@ attach jail-dev` to access its shell.
 
 Inside the container, you can use `go get`, `go build`, and so on seamlessly.
 
+*I think, this needs more explanation. The method to build the `backend.ai-jail` using `Makefile` is not specified. More explanations are also needed about the use case and the test.*
+
 To test the jail, run `./backend.ai-jail <policy-name> <command-args>`.
 Note that this jail binary cannot be executed outside the container even though
 it exists inside the working copy, if you use different OS/architectures for
