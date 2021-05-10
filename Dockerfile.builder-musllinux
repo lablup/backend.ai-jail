@@ -1,9 +1,6 @@
-FROM golang:1.11-alpine
+FROM golang:1.12-alpine
 RUN apk add --no-cache build-base libseccomp-dev git linux-headers
-RUN go get -u github.com/fatih/color && \
-    go get -u github.com/seccomp/libseccomp-golang && \
-    go get -u github.com/gobwas/glob && \
-    go get -u gopkg.in/yaml.v2
-CMD ["make", "inside-container"]
+
+# CMD ["make", "inside-container"]
 
 # vim: ft=dockerfile
