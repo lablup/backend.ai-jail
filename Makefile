@@ -1,4 +1,4 @@
-CONTAINER_WORKDIR=/go/src/github.com/lablup/backend.ai-jail
+CONTAINER_WORKDIR=/src
 
 manylinux:
 	docker build -f Dockerfile.builder-manylinux -t jail-builder-manylinux .
@@ -12,9 +12,12 @@ musllinux:
 	mkdir -p build-musllinux
 	mv backend.ai-jail build-musllinux/jail
 
-inside-container:
+build:
+	go mod tidy
 	go build -tags netgo -ldflags '-extldflags "-static"' -v
 
 prepare-dev:
 	docker build -f Dockerfile -t jail-dev .
 	docker create -i -t -v "$(shell pwd)":$(CONTAINER_WORKDIR) -w $(CONTAINER_WORKDIR) --security-opt=seccomp:unconfined --name jail-dev jail-dev
+
+
