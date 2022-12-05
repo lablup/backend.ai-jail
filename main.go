@@ -2,11 +2,13 @@
 
 /*
 Command-line usage:
-	./jail <child_args ...>  // use default policy
-	./jail -policy <policy_file> <child_args ...>
+
+	./backend.ai-jail <child_args ...>  // use default policy
+	./backend.ai-jail -policy <policy_file> <child_args ...>
 
 Example:
-	./jail -policy python3.yml /bin/sh /home/backend.ai/run.sh
+
+	./backend.ai-jail -policy python3.yml /bin/sh /home/backend.ai/run.sh
 */
 package main
 
