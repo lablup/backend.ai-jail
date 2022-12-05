@@ -17,7 +17,7 @@ build:
 	go build -tags netgo -ldflags '-extldflags "-static"' -v
 
 prepare-dev:
-	docker build -f Dockerfile -t jail-dev .
+	docker build -f Dockerfile -t jail-dev --platform linux/amd64 .
 	docker create -i -t -v "$(shell pwd)":$(CONTAINER_WORKDIR) -w $(CONTAINER_WORKDIR) --security-opt=seccomp:unconfined --name jail-dev jail-dev
 
 
