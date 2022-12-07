@@ -1,4 +1,4 @@
-FROM golang:1.12-alpine
+FROM golang:1.19.4-alpine
 # Debian jessie ships libseccomp 2.1 but golang binding requires 2.2+
 RUN echo "deb http://ftp.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/backports.list \
     && apt update && apt -t jessie-backports install -y libseccomp-dev
