@@ -1,5 +1,5 @@
 FROM golang:1.12-alpine
-RUN apk add --no-cache build-base libseccomp-dev git linux-headers
+RUN apk add --no-cache build-base libseccomp-dev git linux-headers python3
 
 CMD ["make", "build"]
 
