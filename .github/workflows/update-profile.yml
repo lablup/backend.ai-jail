@@ -12,14 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     name: Update Default Policy
     steps:
-      - name: Set up Python as Runtime
-        uses: actions/setup-python@v4
+      - name: Update Default Policy
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
-          cache: pip
-
-      - name: Update Default Policy
-        run: |
+      - run: |
           pip3 install -r scripts/requirements.txt
           python3 scripts/update-policy.py
           sudo apt update
