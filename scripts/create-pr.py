@@ -12,7 +12,7 @@ PR_TITLE = "[Automation testing]"
 PR_BODY = "Test"
 
 os.system(' '.join([
-  f'GITHUB_TOKEN={os.environ['GH_TOKEN']}',
+  f'GITHUB_TOKEN={os.environ["GH_TOKEN"]}',
   f'gh pr create',
   f'--title "{PR_TITLE}"',
   f'--body "{PR_BODY}"',
