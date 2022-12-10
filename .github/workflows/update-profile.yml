@@ -12,16 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     name: Update Default Policy
     steps:
-      - name: Set up Python as Runtime
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
-          python-version: "3.10"
-          cache: pip
-
-      - name: Update Default Policy
-        run: |
-          pip3 install -r scripts/requirements.txt
-          python3 scripts/update-policy.py
+          python-version: "3.10.6"
+      - run: |
           sudo apt update
           sudo apt install gh
+          pip3 install --upgrade pip
+          pip3 install -r scripts/requirements.txt
+          python3 scripts/update-policy.py
           python3 scripts/create-pr.py
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
