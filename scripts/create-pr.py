@@ -11,8 +11,8 @@ os.system(f'git push origin {branch_name}')
 PR_TITLE = "[Automation testing]"
 PR_BODY = "Test"
 
-# Should set 'GITHUB_TOKEN' as environment variable.
 os.system(' '.join([
+  f'GITHUB_TOKEN={os.environ['GH_TOKEN']}',
   f'gh pr create',
   f'--title "{PR_TITLE}"',
   f'--body "{PR_BODY}"',
