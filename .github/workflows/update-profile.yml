@@ -23,3 +23,5 @@ jobs:
           pip3 install -r scripts/requirements.txt
           python3 scripts/update-policy.py
           python3 scripts/create-pr.py
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
