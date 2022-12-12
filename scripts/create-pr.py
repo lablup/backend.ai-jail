@@ -5,7 +5,7 @@ GITHUB_BOT_EMAIL = "github-actions[bot] <41898282+github-actions[bot]@users.nore
 branch_name = str(hash(datetime.now().timestamp()))
 os.system(f'git checkout -b {branch_name}')
 os.system(f'git add ./default-policies/*')
-os.system(f'GIT_COMMITTER_NAME="PROFILE_UPDATE_BOT" git commit --author={GITHUB_BOT_EMAIL}')
+os.system(f'GIT_COMMITTER_NAME="PROFILE_UPDATE_BOT" git commit --author="{GITHUB_BOT_EMAIL}" -m "Update Seccomp Default Profiles"')
 os.system(f'git push origin {branch_name}')
 
 PR_TITLE = "chore: bump default policy update"
