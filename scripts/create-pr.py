@@ -17,7 +17,7 @@ os.system(' '.join([
   f'--title "{PR_TITLE}"',
   f'--body "{PR_BODY}"',
   f'--repo "lablup/backend.ai-jail"',
-  f'--base "main"',
+  f'--base "{branch_name}"',
   f'--label "infrastructure"',
   # TODO: Remove below flag.
   f'--draft'
