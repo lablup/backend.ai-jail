@@ -2,7 +2,7 @@ import requests
 import oyaml
 from itertools import chain
 from collections.abc import Mapping
-
+from collections import OrderedDict
 
 extra_syscalls = [
   "_exit",
@@ -67,6 +67,8 @@ for processor_arch in ['amd64', 'arm64']:
 
     yml_filepath = f'./default-policies/default-policy.{processor_arch}.yml'
     default_policy = oyaml.load(open(yml_filepath, 'r'), Loader=oyaml.FullLoader)
+    if not default_policy:
+        default_policy = OrderedDict()
     default_policy['allowed_syscalls'] = sorted(list(allowed_syscalls))
 
     oyaml.dump(default_policy, open(yml_filepath, 'w'), Dumper=OYAMLDumper, default_flow_style=False)
