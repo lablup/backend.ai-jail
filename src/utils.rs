@@ -24,14 +24,12 @@ macro_rules! vec_of_strings {
 
 #[macro_export]
 macro_rules! panic_if_err {
-    ( $x:expr ) => {
-        {
-            match $x {
-                Ok(i) => i,
-                Err(e) => panic!("{:?}", e),
-            }
+    ( $x:expr ) => {{
+        match $x {
+            Ok(i) => i,
+            Err(e) => panic!("{:?}", e),
         }
-    };
+    }};
 }
 
 pub fn filter_envs(preserved_env_keys: &Vec<String>) -> Vec<String> {
@@ -46,20 +44,15 @@ pub fn filter_envs(preserved_env_keys: &Vec<String>) -> Vec<String> {
 }
 
 pub fn get_executable(pid: Pid) -> Result<String, ByteOpsError> {
-	let deleted_tag = " (deleted)";
-    let mut path = 
-        fs::read_link(format!("/proc/{}/exe", pid.as_raw()))?
+    let deleted_tag = " (deleted)";
+    let mut path = fs::read_link(format!("/proc/{}/exe", pid.as_raw()))?
         .display()
         .to_string()
         .trim_end_matches(deleted_tag)
         .trim_end_matches(deleted_tag)
         .to_string();
 
-    if 
-        path == "/bin/sh" ||
-        path == "/bin/bash" || 
-        path == "/bin/dash" 
-    {
+    if path == "/bin/sh" || path == "/bin/bash" || path == "/bin/dash" {
         let mut file = fs::File::open(format!("/proc/{}/cmdline", pid.as_raw()))?;
         let mut buf = [0; 1024];
         file.read(&mut buf)?;
@@ -76,7 +69,8 @@ pub fn get_executable(pid: Pid) -> Result<String, ByteOpsError> {
 }
 
 pub fn read_string(pid: Pid, addr_raw: usize) -> Result<String, ByteOpsError> {
-    let mut out: Vec<u8> = Vec::new();    'outer: for i in 0..(PATH_MAX / 8) {
+    let mut out: Vec<u8> = Vec::new();
+    'outer: for i in 0..(PATH_MAX / 8) {
         let data = ptrace::read(pid, (addr_raw + (i * 8) as usize) as *mut c_void)?;
         for j in 0..8 {
             let char = (data >> (j * 8)) as u8;
@@ -87,16 +81,17 @@ pub fn read_string(pid: Pid, addr_raw: usize) -> Result<String, ByteOpsError> {
         }
     }
 
-    Ok(String::from_utf8(out)?)}
+    Ok(String::from_utf8(out)?)
+}
 
 pub fn get_abs_path_as(path_: &str, pid: Pid) -> Result<PathBuf, ByteOpsError> {
     let path = Path::new(path_);
-	if path.is_absolute() {
+    if path.is_absolute() {
         Ok(clean_path::clean(path))
-	} else {
+    } else {
         let pwd_path = format!("/proc/{}/cwd", pid.as_raw());
         let mut pwd = fs::read_link(pwd_path)?;
         let path_ = clean_path::clean(&mut pwd);
         Ok(pwd.join(path_))
-	}
+    }
 }

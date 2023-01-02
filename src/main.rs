@@ -7,9 +7,9 @@ use libc::umask;
 use log::info;
 use std::process::id as getpid;
 
-pub mod utils;
 pub mod interface;
 pub mod policy;
+pub mod utils;
 
 fn setup_logger(level: log::LevelFilter) -> Result<(), fern::InitError> {
     let colors = ColoredLevelConfig::new()
@@ -49,8 +49,10 @@ fn setup_logger(level: log::LevelFilter) -> Result<(), fern::InitError> {
     )
 )]
 fn main() {
-    unsafe { umask(0o022); }
-    
+    unsafe {
+        umask(0o022);
+    }
+
     let cli = interface::Args::parse();
     let log_level_str = match &cli.log_level {
         Some(l) => l,

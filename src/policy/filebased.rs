@@ -1,6 +1,9 @@
-use crate::policy::traits::{SandboxPolicy, PathOps, PolicyConf, PolicyError};
+use crate::policy::traits::{PathOps, PolicyConf, PolicyError, SandboxPolicy};
 
-use std::{fs::File, collections::{HashMap, HashSet}};
+use std::{
+    collections::{HashMap, HashSet},
+    fs::File,
+};
 
 pub struct FileBasedPolicy {
     pub file_name: String,
@@ -8,7 +11,9 @@ pub struct FileBasedPolicy {
 }
 
 impl FileBasedPolicy {
-    pub fn generate_from_yaml(policy_file: &Option<String>) -> Result<FileBasedPolicy, PolicyError> {
+    pub fn generate_from_yaml(
+        policy_file: &Option<String>,
+    ) -> Result<FileBasedPolicy, PolicyError> {
         let default_conf = PolicyConf::default();
         let mut filename = "".to_string();
         let mut policy_conf = match policy_file {
@@ -18,10 +23,8 @@ impl FileBasedPolicy {
                 let mut read_conf: PolicyConf = serde_yaml::from_reader(file)?;
                 read_conf.traced_syscalls = default_conf.traced_syscalls;
                 read_conf
-            },
-            _ => {
-                PolicyConf::default()
             }
+            _ => PolicyConf::default(),
         };
 
         if policy_conf.diff_to_default {
@@ -65,18 +68,20 @@ impl FileBasedPolicy {
             }
         }
 
-        Ok(
-            FileBasedPolicy {
-                file_name: filename.to_string(),
-                conf: policy_conf,
-            }
-        )
+        Ok(FileBasedPolicy {
+            file_name: filename.to_string(),
+            conf: policy_conf,
+        })
     }
 }
 
 impl SandboxPolicy for FileBasedPolicy {
     fn check_path_op(&self, path: &str, op: PathOps, mode: i32) -> bool {
-        let matchers = self.conf.whitelist_paths.get(&op).expect(&format!("Op {:?} does not exist", op));
+        let matchers = self
+            .conf
+            .whitelist_paths
+            .get(&op)
+            .expect(&format!("Op {:?} does not exist", op));
         for matcher in matchers {
             let pattern = glob::Pattern::new(matcher).unwrap();
             if pattern.matches(path) {
