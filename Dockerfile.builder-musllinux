@@ -1,6 +1,4 @@
-FROM golang:1.19.4-alpine
-RUN apk add --no-cache build-base libseccomp-dev git linux-headers
+FROM rust:alpine3.17
+RUN apk add libseccomp-dev musl-dev
 
-CMD ["make", "build"]
-
-# vim: ft=dockerfile
+CMD ["cargo", "build", "--release"]

@@ -1,6 +1,5 @@
-FROM golang:1.19.4-alpine
+FROM rust
 # This container is for daily development.
 
-RUN apk add --no-cache build-base git libseccomp-dev linux-headers libseccomp-static
-
-CMD ["/bin/ash"]
+RUN apt-get update && apt-get install -y build-essential libseccomp-dev
+CMD ["/bin/bash"]

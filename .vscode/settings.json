@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "wait.h": "c",
+        "waitstatus.h": "c",
+        "signal.h": "c",
+        "sigset_t.h": "c",
+        "sig_atomic_t.h": "c",
+        "types.h": "c"
+    }
+}
