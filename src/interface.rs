@@ -6,17 +6,17 @@ use nix::unistd::Pid;
 
 /// All jail plugins need to implement this interface
 /// and a function with signature pub extern "Rust" fn load() -> *mut dyn PluginInterface;
-/// which returns `Box`ed struct 
+/// which returns `Box`ed struct
 pub trait PluginInterface: Any + Send + Sync {
     /// Returns name of plugin itself
     fn get_name(&self) -> &'static str;
     /// Store syscalls hooked by the plugin
-    /// 
+    ///
     /// * Arguments
     /// - `hooks`: vector to store definition of hooked syscalls
     fn get_hooked_syscalls(&self, hooks: &mut Vec<SyscallHook>);
     /// Hook to be executed before actual execution of system call
-    /// 
+    ///
     /// * Arguments
     /// - `name`: Name of system call
     /// - `pid`: PID of child calling system call
@@ -28,15 +28,16 @@ pub trait PluginInterface: Any + Send + Sync {
     /// - <0: Errno
     fn pre_execution_hook(&self, name: &str, pid: Pid, regs: &user_regs_struct) -> i32;
     /// Hook to be executed after execution of system call
-    /// 
+    /// This can't block execution of system call,
+    /// but can benefit when hook need to alter result provided by system call
+    ///
     /// * Arguments
     /// - `name`: Name of system call
     /// - `pid`: PID of child calling system call
     /// - `regs`: Register info
     /// * Returns
     /// Possible return values are:
-    /// - 1: allow syscall to be executed
-    /// - 0: deny execution of syscall
+    /// - 0: hook executed without error
     /// - <0: Errno
     fn post_execution_hook(&self, name: &str, pid: Pid, regs: &user_regs_struct) -> i32;
 }
@@ -62,7 +63,7 @@ pub enum HookType {
 #[command(author, version, about, long_about = None)]
 pub struct Args {
     pub args: Vec<String>,
-    
+
     /// Path to policy config file. If set to default, it uses the embedded default policy.
     #[arg(short, long)]
     pub policy: Option<String>,
@@ -79,4 +80,3 @@ pub struct Args {
     #[arg(short, long)]
     pub noop: bool,
 }
-
