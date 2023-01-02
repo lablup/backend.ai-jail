@@ -674,9 +674,10 @@ impl Jail {
                             if !self.cli.watch {
                                 // THIS IS NOT A DRILL
                                 regs.orig_rax = u64::MAX; // -1
-                                                          // Though we can't halt the actual execution of syscall,
-                                                          // it's possible to alter return value of syscall to -1 (EPERM)
-                                                          // so that caller can think kernel refused to execute syscall
+
+                                // Though we can't halt the actual execution of syscall,
+                                // it's possible to alter return value of syscall to -1 (EPERM)
+                                // so that caller can think kernel refused to execute syscall
                                 regs.rax = u64::MAX - Errno::EPERM as u64 + 1;
                                 match ptrace::setregs(target, regs) {
                                     Ok(_) => {}
