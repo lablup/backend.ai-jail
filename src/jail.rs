@@ -42,6 +42,35 @@ struct WaitResult {
     result: i32,
 }
 
+#[cfg(target_arch = "x86_64")]
+macro_rules! syscall_name { ( $x:expr ) => ($x.rax) }
+#[cfg(target_arch = "x86_64")]
+macro_rules! syscall_arg1 { ( $x:expr ) => ($x.rdi) }
+#[cfg(target_arch = "x86_64")]
+macro_rules! syscall_arg2 { ( $x:expr ) => ($x.rsi) }
+#[cfg(target_arch = "x86_64")]
+macro_rules! syscall_arg3 { ( $x:expr ) => ($x.rdx) }
+#[cfg(target_arch = "x86_64")]
+macro_rules! syscall_arg4 { ( $x:expr ) => ($x.rcx) }
+#[cfg(target_arch = "x86_64")]
+macro_rules! syscall_arg5 { ( $x:expr ) => ($x.r8d) }
+#[cfg(target_arch = "x86_64")]
+macro_rules! syscall_arg6 { ( $x:expr ) => ($x.r9d) }
+#[cfg(target_arch = "aarch64")]
+macro_rules! syscall_name { ( $x:expr ) => ($x.x8) }
+#[cfg(target_arch = "aarch64")]
+macro_rules! syscall_arg1 { ( $x:expr ) => ($x.x0) }
+#[cfg(target_arch = "aarch64")]
+macro_rules! syscall_arg2 { ( $x:expr ) => ($x.x1) }
+#[cfg(target_arch = "aarch64")]
+macro_rules! syscall_arg3 { ( $x:expr ) => ($x.x2) }
+#[cfg(target_arch = "aarch64")]
+macro_rules! syscall_arg4 { ( $x:expr ) => ($x.x3) }
+#[cfg(target_arch = "aarch64")]
+macro_rules! syscall_arg5 { ( $x:expr ) => ($x.x4) }
+#[cfg(target_arch = "aarch64")]
+macro_rules! syscall_arg6 { ( $x:expr ) => ($x.x5) }
+
 /// Wrapper of waitpid()
 /// 
 /// # Arguments
@@ -375,6 +404,7 @@ impl Jail {
 
                         // access to register data to read value supplied to argument of system call
                         // First six syscall arguments are in rdi, rsi, rdx, rcx, r8d, r9d in x86_64 systems
+                        // and x0, x1, x2, x3, x4, x5 in Aarch64 systems
                         let mut regs = loop {
                             match ptrace::getregs(target) {
                                 Ok(r) => break r,
@@ -387,8 +417,8 @@ impl Jail {
                                 }
                             }
                         };
-                        // syscall name will be stored to rax on x86_64 system
-                        let syscall = ScmpSyscall::from(regs.orig_rax as i32);
+                        // syscall name will be stored to rax on x86_64 system and x8 on Aarch64
+                        let syscall = ScmpSyscall::from(syscall_name!(regs) as i32);
                         let syscall_name = syscall.get_name().expect("unexpected error while retrieving syscall name");
                         debug!("seccomp trap ({})", syscall_name);
 
@@ -411,9 +441,9 @@ impl Jail {
                                 debug!("fork owner: {}", target_exec_path);
                             },
                             "tgkill" => {
-                                let target_tgid = regs.rdi;
-                                let target_tid = regs.rsi;
-                                let signum: Signal = unsafe { std::mem::transmute(regs.rdx as i32) };
+                                let target_tgid = syscall_arg1!(regs);
+                                let target_tid = syscall_arg2!(regs);
+                                let signum: Signal = unsafe { std::mem::transmute(syscall_arg3!(regs) as i32) };
                                 allow = match signum {
                                     Signal::SIGKILL | Signal::SIGINT | Signal::SIGTERM => {
                                         target_tgid != getpid() as u64 &&
@@ -426,8 +456,8 @@ impl Jail {
                                 };
                             },
                             "kill" | "killpg" | "tkill" => {
-                                let target_pid = regs.rdi;
-                                let signum: Signal = unsafe { std::mem::transmute(regs.rsi as i32) };
+                                let target_pid = syscall_arg1!(regs);
+                                let signum: Signal = unsafe { std::mem::transmute(syscall_arg2!(regs) as i32) };
                                 allow = match signum {
                                     Signal::SIGKILL | Signal::SIGINT | Signal::SIGTERM => {
                                         target_pid != getpid() as u64 &&
@@ -456,27 +486,27 @@ impl Jail {
                                 extra_info = format!("execve from {}", target_exec_path);
                             },
                             "open" => {
-                                let path_str = panic_if_err!(utils::read_string(target, regs.rdi as usize));
+                                let path_str = panic_if_err!(utils::read_string(target, syscall_arg1!(regs) as usize));
                                 let path = panic_if_err!(utils::get_abs_path_as(&path_str, target));
-                                allow = self.policy_inst.check_path_op(&path.display().to_string(), PathOps::OpOpen, regs.rdx as i32);
+                                allow = self.policy_inst.check_path_op(&path.display().to_string(), PathOps::OpOpen, syscall_arg3!(regs) as i32);
                                 extra_info = path.display().to_string();
                             },
                             "access" => {
-                                let path_str = panic_if_err!(utils::read_string(target, regs.rdi as usize));
+                                let path_str = panic_if_err!(utils::read_string(target, syscall_arg1!(regs) as usize));
                                 let path = panic_if_err!(utils::get_abs_path_as(&path_str, target));
-                                allow = self.policy_inst.check_path_op(&path.display().to_string(), PathOps::OpAccess, regs.rsi as i32);
+                                allow = self.policy_inst.check_path_op(&path.display().to_string(), PathOps::OpAccess, syscall_arg2!(regs) as i32);
                                 extra_info = path.display().to_string();
                             },
                             "fchmodat" => {
-                                let path_str = panic_if_err!(utils::read_string(target, regs.rsi as usize));
+                                let path_str = panic_if_err!(utils::read_string(target, syscall_arg2!(regs) as usize));
                                 let path = panic_if_err!(utils::get_abs_path_as(&path_str, target));
-                                allow = self.policy_inst.check_path_op(&path.display().to_string(), PathOps::OpChmod, regs.rdx as i32);
+                                allow = self.policy_inst.check_path_op(&path.display().to_string(), PathOps::OpChmod, syscall_arg3!(regs) as i32);
                                 extra_info = path.display().to_string();
                             },
                             "chmod" => {
-                                let path_str = panic_if_err!(utils::read_string(target, regs.rdi as usize));
+                                let path_str = panic_if_err!(utils::read_string(target, syscall_arg1!(regs) as usize));
                                 let path = panic_if_err!(utils::get_abs_path_as(&path_str, target));
-                                allow = self.policy_inst.check_path_op(&path.display().to_string(), PathOps::OpChmod, regs.rsi as i32);
+                                allow = self.policy_inst.check_path_op(&path.display().to_string(), PathOps::OpChmod, syscall_arg2!(regs) as i32);
                                 extra_info = path.display().to_string();
                             },
                             _ => {
