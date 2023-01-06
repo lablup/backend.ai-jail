@@ -86,49 +86,6 @@ macro_rules! syscall_arg6 {
         $x.r9d
     };
 }
-#[cfg(target_arch = "aarch64")]
-macro_rules! syscall_name {
-    ( $x:expr ) => {
-        $x.x8
-    };
-}
-#[cfg(target_arch = "aarch64")]
-macro_rules! syscall_arg1 {
-    ( $x:expr ) => {
-        $x.x0
-    };
-}
-#[cfg(target_arch = "aarch64")]
-macro_rules! syscall_arg2 {
-    ( $x:expr ) => {
-        $x.x1
-    };
-}
-#[cfg(target_arch = "aarch64")]
-macro_rules! syscall_arg3 {
-    ( $x:expr ) => {
-        $x.x2
-    };
-}
-#[cfg(target_arch = "aarch64")]
-macro_rules! syscall_arg4 {
-    ( $x:expr ) => {
-        $x.x3
-    };
-}
-#[cfg(target_arch = "aarch64")]
-macro_rules! syscall_arg5 {
-    ( $x:expr ) => {
-        $x.x4
-    };
-}
-#[cfg(target_arch = "aarch64")]
-macro_rules! syscall_arg6 {
-    ( $x:expr ) => {
-        $x.x5
-    };
-}
-
 /// Wrapper of waitpid()
 ///
 /// # Arguments
@@ -784,8 +741,6 @@ impl Jail {
 
             #[cfg(target_arch = "x86_64")]
             panic_if_err!(filter.add_arch(ScmpArch::X8664));
-            #[cfg(target_arch = "aarch64")]
-            panic_if_err!(filter.add_arch(ScmpArch::Aarch64));
 
             let mut plugin_hooked_syscalls: HashSet<String> = HashSet::new();
             for (syscall_name, _) in &self.pre_execution_hooks {
