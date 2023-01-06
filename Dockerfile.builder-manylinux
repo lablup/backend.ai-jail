@@ -1,8 +1,4 @@
-FROM golang:1.19.4-alpine
-# Debian jessie ships libseccomp 2.1 but golang binding requires 2.2+
-RUN echo "deb http://ftp.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/backports.list \
-    && apt update && apt -t jessie-backports install -y libseccomp-dev
+FROM rust
+RUN apt update && apt install -y libseccomp-dev && rm -rf /var/lib/apt/lists
 
-CMD ["make", "build"]
-
-# vim: ft=dockerfile
+CMD ["cargo", "build", "--release"]
