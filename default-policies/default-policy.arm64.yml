@@ -17,37 +17,37 @@ preserved_env_keys: ["HOME", "PATH", "LANG", "PYENV_ROOT", "PYTHONPATH", "LD_LIB
 diff_to_default: true
 
 traced_syscalls:
-  - "stat",
-  - "lstat",
-  - "lstat64",
-  - "statfs",
-  - "readlink",
-  - "unlink",
-  - "rmdir",
-  - "truncate",
-  - "truncate64",
-  - "access",
-  - "creat",
-  - "mkdir",
-  - "mknod",
-  - "chmod",
-  - "open",
-  - "readlinkat",
-  - "unlinkat",
-  - "fchmodat",
+  - "stat"
+  - "lstat"
+  - "lstat64"
+  - "statfs"
+  - "readlink"
+  - "unlink"
+  - "rmdir"
+  - "truncate"
+  - "truncate64"
+  - "access"
+  - "creat"
+  - "mkdir"
+  - "mknod"
+  - "chmod"
+  - "open"
+  - "readlinkat"
+  - "unlinkat"
+  - "fchmodat"
   - "faccessat"
-  - "mkdirat",
-  - "mknodat",
-  - "openat",
-  - "link",
-  - "rename",
-  - "symlink",
-  - "symlinkat",
-  - "renameat",
-  - "linkat",
-  - "fork",
-  - "vfork",
-  - "clone",
+  - "mkdirat"
+  - "mknodat"
+  - "openat"
+  - "link"
+  - "rename"
+  - "symlink"
+  - "symlinkat"
+  - "renameat"
+  - "linkat"
+  - "fork"
+  - "vfork"
+  - "clone"
   - "clone3"
 
 allowed_syscalls:
