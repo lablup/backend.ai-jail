@@ -1,0 +1,7 @@
+FROM alpine:3.8
+RUN apk add libseccomp-dev build-base curl
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="$PATH:/root/.cargo/bin"
+ENV RUSTFLAGS="-C target-feature=-crt-static"
+
+CMD ["cargo", "build", "--release"]

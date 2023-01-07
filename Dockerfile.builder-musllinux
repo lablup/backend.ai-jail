@@ -1,4 +1,0 @@
-FROM rust:alpine3.17
-RUN apk add libseccomp-dev musl-dev
-
-CMD ["cargo", "build", "--release"]
