@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  update-default-policy:
+  update-default-policies:
     runs-on: ubuntu-latest
     name: Update Default Policies
     steps:
@@ -21,7 +21,7 @@ jobs:
           sudo apt install gh
           pip3 install --upgrade pip
           pip3 install -r scripts/requirements.txt
-          python3 scripts/update-policy.py
+          python3 scripts/update-policies.py
           python3 scripts/create-pr.py
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
