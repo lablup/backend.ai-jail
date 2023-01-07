@@ -8,19 +8,23 @@ GITHUB_BOT_EMAIL = (
 )
 
 branch_name = str(hash(datetime.now().timestamp()))
-subprocess.run(f"git checkout -b {branch_name}", check=True, cwd=Path.cwd())
-subprocess.run(f"git add ./default-policies/*", check=True, cwd=Path.cwd())
-subprocess.run(
+
+
+def run(command):
+    subprocess.run(command, check=True, shell=True, cwd=Path.cwd())
+
+
+run(f"git checkout -b {branch_name}")
+run(f"git add ./default-policies/*")
+run(
     f'GIT_COMMITTER_NAME="PROFILE_UPDATE_BOT" git commit --author="{GITHUB_BOT_EMAIL}" -m "Update Seccomp Default Profiles"',
-    check=True,
-    cwd=Path.cwd(),
 )
-subprocess.run(f"git push origin {branch_name}", check=True, cwd=Path.cwd())
+run(f"git push origin {branch_name}", check=True, cwd=Path.cwd())
 
 PR_TITLE = "chore: bump default policy update"
 PR_BODY = "Bumps [seccomp default policy](https://raw.githubusercontent.com/moby/moby/master/profiles/seccomp/default.json) update"
 
-subprocess.run(
+run(
     " ".join(
         [
             f'GITHUB_TOKEN={os.environ["GH_TOKEN"]}',
@@ -33,7 +37,5 @@ subprocess.run(
             # TODO: Remove below flag.
             f"--draft",
         ]
-    ),
-    check=True,
-    cwd=Path.cwd(),
+    )
 )
