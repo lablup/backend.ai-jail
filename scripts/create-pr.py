@@ -19,7 +19,7 @@ run(f"git add ./default-policies/*")
 run(
     f'GIT_COMMITTER_NAME="PROFILE_UPDATE_BOT" git commit --author="{GITHUB_BOT_EMAIL}" -m "Update Seccomp Default Profiles"',
 )
-run(f"git push origin {branch_name}", check=True, cwd=Path.cwd())
+run(f"git push origin {branch_name}")
 
 PR_TITLE = "chore: bump default policy update"
 PR_BODY = "Bumps [seccomp default policy](https://raw.githubusercontent.com/moby/moby/master/profiles/seccomp/default.json) update"
