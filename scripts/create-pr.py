@@ -6,7 +6,7 @@ GITHUB_BOT_EMAIL = (
 )
 
 branch_name = str(hash(datetime.now().timestamp()))
-subprocess.run(f"git checkout -b {branch_name}", check=True)
+os.system(f"git checkout -b {branch_name}")
 subprocess.run(f"git add ./default-policies/*", check=True)
 subprocess.run(
     f'GIT_COMMITTER_NAME="PROFILE_UPDATE_BOT" git commit --author="{GITHUB_BOT_EMAIL}" -m "Update Seccomp Default Profiles"',
