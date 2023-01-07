@@ -47,7 +47,7 @@ struct WaitResult {
 #[cfg(target_arch = "x86_64")]
 macro_rules! syscall_name {
     ( $x:expr ) => {
-        $x.rax
+        $x.orig_rax
     };
 }
 #[cfg(target_arch = "x86_64")]
