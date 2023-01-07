@@ -21,8 +21,8 @@ To debug, add `--debug` flag to the command-line arguments.
 
 ## Building Release Binaries
 
-Run `make manylinux` for glibc-based binaries (for Ubuntu/Debian Linux) and
-`make musllinux` for musl-based binaries (for Alpine Linux).
+Run `make ubuntu<version>` for glibc-based binaries (for Ubuntu/Debian Linux) and
+`make alpine3.8` for musl-based binaries (for Alpine Linux). Check Makefile for more informations.
 
 On the target systems or images, you need to install libseccomp 2.2 or higher
 to use Backend.AI Jail.
