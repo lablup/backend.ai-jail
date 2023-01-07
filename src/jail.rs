@@ -612,7 +612,7 @@ impl Jail {
                                         1 => {}
                                         0 if allow => allow = false,
                                         err => {
-                                            let errno: Errno = unsafe { std::mem::transmute(err) };
+                                            let errno: Errno = unsafe { std::mem::transmute(err * -1) };
                                             warn!("Error while executing hook: {}", errno);
                                         }
                                     }
@@ -660,10 +660,10 @@ impl Jail {
                                             target,
                                             &regs,
                                         ) {
-                                            0 => {}
+                                            0 => {},
                                             err => {
                                                 let errno: Errno =
-                                                    unsafe { std::mem::transmute(err) };
+                                                    unsafe { std::mem::transmute(err * -1) };
                                                 warn!("Error while executing hook: {}", errno);
                                             }
                                         }
