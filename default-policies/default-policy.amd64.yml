@@ -1,21 +1,28 @@
-# References when you are going to update this file:
-#  - https://github.com/docker/docker/blob/master/docs/security/seccomp.md
-#  - https://filippo.io/linux-syscall-table/
-
 whitelist_paths:
-  OP_OPEN: ["*"]
-  OP_ACCESS: ["*"]
-  OP_EXEC: ["*"]
-  OP_STAT: ["*"]
-  OP_CHMOD: ["/home/work/*", "/tmp/*"]
+  OP_OPEN:
+    - '*'
+  OP_ACCESS:
+    - '*'
+  OP_EXEC:
+    - '*'
+  OP_STAT:
+    - '*'
+  OP_CHMOD:
+    - /home/work/*
+    - /tmp/*
 exec_allowance: 0
 fork_allowance: -1
 max_child_procs: 512
 extra_envs: []
-preserved_env_keys: ["HOME", "PATH", "LANG", "PYENV_ROOT", "PYTHONPATH", "LD_LIBRARY_PATH", "LD_PRELOAD"]
-
+preserved_env_keys:
+  - HOME
+  - PATH
+  - LANG
+  - PYENV_ROOT
+  - PYTHONPATH
+  - LD_LIBRARY_PATH
+  - LD_PRELOAD
 diff_to_default: true
-
 traced_syscalls:
   - stat
   - lstat
@@ -49,7 +56,6 @@ traced_syscalls:
   - vfork
   - clone
   - clone3
-
 allowed_syscalls:
   - _exit
   - _llseek
