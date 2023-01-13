@@ -1,3 +1,5 @@
+#[macro_use]
+mod arch;
 mod jail;
 
 use clap::Parser;
@@ -44,7 +46,7 @@ fn setup_logger(level: log::LevelFilter) -> Result<(), fern::InitError> {
 
 #[cfg(
     all(
-        any(target_arch = "x86_64"), // TODO: Support Aarch64
+        any(target_arch = "aarch64", target_arch = "x86_64"),
         any(target_os = "macos", target_os = "linux"), // macOS is set only for convenience, this program won't run on macOS
     )
 )]

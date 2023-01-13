@@ -1,3 +1,4 @@
+use crate::arch;
 use crate::interface::{Args, HookType, PluginInterface, SyscallHook};
 use crate::policy::filebased::FileBasedPolicy;
 use crate::policy::traits::{PathOps, SandboxPolicy};
@@ -44,48 +45,6 @@ struct WaitResult {
     result: i32,
 }
 
-#[cfg(target_arch = "x86_64")]
-macro_rules! syscall_name {
-    ( $x:expr ) => {
-        $x.orig_rax
-    };
-}
-#[cfg(target_arch = "x86_64")]
-macro_rules! syscall_arg1 {
-    ( $x:expr ) => {
-        $x.rdi
-    };
-}
-#[cfg(target_arch = "x86_64")]
-macro_rules! syscall_arg2 {
-    ( $x:expr ) => {
-        $x.rsi
-    };
-}
-#[cfg(target_arch = "x86_64")]
-macro_rules! syscall_arg3 {
-    ( $x:expr ) => {
-        $x.rdx
-    };
-}
-#[cfg(target_arch = "x86_64")]
-macro_rules! syscall_arg4 {
-    ( $x:expr ) => {
-        $x.rcx
-    };
-}
-#[cfg(target_arch = "x86_64")]
-macro_rules! syscall_arg5 {
-    ( $x:expr ) => {
-        $x.r8d
-    };
-}
-#[cfg(target_arch = "x86_64")]
-macro_rules! syscall_arg6 {
-    ( $x:expr ) => {
-        $x.r9d
-    };
-}
 /// Wrapper of waitpid()
 ///
 /// # Arguments
@@ -453,7 +412,7 @@ impl Jail {
                         // First six syscall arguments are in rdi, rsi, rdx, rcx, r8d, r9d in x86_64 systems
                         // and x0, x1, x2, x3, x4, x5 in Aarch64 systems
                         let mut regs = loop {
-                            match ptrace::getregs(target) {
+                            match arch::getregs(target) {
                                 Ok(r) => break r,
                                 Err(e) => {
                                     if e == Errno::EBUSY || e == Errno::EFAULT || e == Errno::ESRCH
@@ -630,13 +589,13 @@ impl Jail {
                             }
                             if !self.cli.watch {
                                 // THIS IS NOT A DRILL
-                                regs.orig_rax = u64::MAX; // -1
+                                syscall_name!(regs) = u64::MAX; // -1
 
                                 // Though we can't halt the actual execution of syscall,
                                 // it's possible to alter return value of syscall to -1 (EPERM)
                                 // so that caller can think kernel refused to execute syscall
-                                regs.rax = u64::MAX - Errno::EPERM as u64 + 1;
-                                match ptrace::setregs(target, regs) {
+                                syscall_ret!(regs) = u64::MAX - Errno::EPERM as u64 + 1;
+                                match arch::setregs(target, regs) {
                                     Ok(_) => {}
                                     Err(e) => {
                                         debug!("Error while executing setregs(): {:?}", e);
@@ -739,6 +698,8 @@ impl Jail {
                 libc::EPERM
             )));
 
+            #[cfg(target_arch = "aarch64")]
+            panic_if_err!(filter.add_arch(ScmpArch::Aarch64));
             #[cfg(target_arch = "x86_64")]
             panic_if_err!(filter.add_arch(ScmpArch::X8664));
 
