@@ -5,9 +5,9 @@ all: ubuntu18.04 ubuntu20.04 ubuntu22.04 alpine3.8
 
 prepare-dev:
 	docker build -t jail-dev -f dockerfiles/Dockerfile.dev .
-	docker rm -f rust || true
-	docker create -i -t -v "$(shell pwd)":$(CONTAINER_WORKDIR) -w $(CONTAINER_WORKDIR) --security-opt=seccomp:unconfined --name rust jail-dev /bin/bash
-	docker start rust
+	docker rm -f jail-dev || true
+	docker create -i -t -v "$(shell pwd)":$(CONTAINER_WORKDIR) -w $(CONTAINER_WORKDIR) --security-opt=seccomp:unconfined --name jail-dev jail-dev /bin/bash
+	docker start jail-dev
 
 ubuntu18.04:
 	docker build -f dockerfiles/Dockerfile.builder-ubuntu18.04 -t jail-builder-ubuntu18.04 .
