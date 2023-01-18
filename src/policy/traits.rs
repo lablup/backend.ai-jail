@@ -50,7 +50,14 @@ pub enum PathOps {
 
 impl Default for PolicyConf {
     fn default() -> Self {
-        let arch = "amd64";
+        let arch = match std::env::consts::ARCH {
+            "arm" => "arm64",
+            "aarch64" => "arm64",
+            "x86" => "amd64",
+            "x86_64" => "amd64",
+            _ => panic!("Unsupported CPU architecture detected."),
+        };
+
         let policy_file = std::fs::read_to_string(format!("./default-policies/default-policy.{arch}.yml")).unwrap();
         let policy_conf: PolicyConf = serde_yaml::from_str(&policy_file).unwrap();
         policy_conf
