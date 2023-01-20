@@ -18,6 +18,7 @@ use std::path::PathBuf;
 use std::process::{exit, id as getpid, Command};
 use std::{env, fs};
 use tokio::signal::unix::{signal as tokioSignal, SignalKind};
+use which::which;
 
 pub struct Jail {
     policy_inst: FileBasedPolicy,
@@ -764,10 +765,8 @@ impl Jail {
             panic_if_err!(filter.load());
         }
 
-        let bin_path = PathBuf::from(&self.cli.args[0]);
-        if !bin_path.exists() {
-            panic!("{} not found", self.cli.args[0]);
-        }
+        let bin_path =
+            which(&self.cli.args[0]).unwrap_or_else(|_| panic!("{} not found", self.cli.args[0]));
 
         let error = Command::new(&bin_path)
             .args(self.cli.args.get_mut(1..).unwrap())
