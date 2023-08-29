@@ -4,23 +4,33 @@ use nix::sys::ptrace;
 use nix::unistd::Pid;
 
 macro_rules! syscall_name {
-    ($x:expr) => ($x.orig_rax);
+    ($x:expr) => {
+        $x.orig_rax
+    };
 }
 
 macro_rules! syscall_arg1 {
-    ($x:expr) => ($x.rdi);
+    ($x:expr) => {
+        $x.rdi
+    };
 }
 
 macro_rules! syscall_arg2 {
-    ($x:expr) => ($x.rsi);
+    ($x:expr) => {
+        $x.rsi
+    };
 }
 
 macro_rules! syscall_arg3 {
-    ($x:expr) => ($x.rdx);
+    ($x:expr) => {
+        $x.rdx
+    };
 }
 
 macro_rules! syscall_ret {
-    ($x:expr) => ($x.rax);
+    ($x:expr) => {
+        $x.rax
+    };
 }
 
 pub fn getregs(pid: Pid) -> Result<user_regs_struct, Errno> {

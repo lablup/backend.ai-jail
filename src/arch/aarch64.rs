@@ -4,23 +4,33 @@ use nix::errno::Errno;
 use nix::unistd::Pid;
 
 macro_rules! syscall_name {
-    ($x:expr) => ($x.regs[8]);
+    ($x:expr) => {
+        $x.regs[8]
+    };
 }
 
 macro_rules! syscall_arg1 {
-    ($x:expr) => ($x.regs[0]);
+    ($x:expr) => {
+        $x.regs[0]
+    };
 }
 
 macro_rules! syscall_arg2 {
-    ($x:expr) => ($x.regs[1]);
+    ($x:expr) => {
+        $x.regs[1]
+    };
 }
 
 macro_rules! syscall_arg3 {
-    ($x:expr) => ($x.regs[2]);
+    ($x:expr) => {
+        $x.regs[2]
+    };
 }
 
 macro_rules! syscall_ret {
-    ($x:expr) => ($x.regs[0]);
+    ($x:expr) => {
+        $x.regs[0]
+    };
 }
 
 pub fn getregs(pid: Pid) -> Result<user_regs_struct, Errno> {
