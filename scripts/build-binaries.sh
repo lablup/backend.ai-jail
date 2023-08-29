@@ -2,10 +2,10 @@
 mkdir -p dist
 PLATFORM=$1
 case "$PLATFORM" in
-"alpine") DOCKER_TAG="alpine";
-"ubuntu18.04") DOCKER_TAG="buster";
-"ubuntu20.04") DOCKER_TAG="bullseye";
-"ubuntu22.04") DOCKER_TAG="bookworm";
+"alpine") DOCKER_TAG="alpine";;
+"ubuntu18.04") DOCKER_TAG="buster";;
+"ubuntu20.04") DOCKER_TAG="bullseye";;
+"ubuntu22.04") DOCKER_TAG="bookworm";;
 *) echo "Unsupported Platform $1"; exit 1;;
 esac
 
