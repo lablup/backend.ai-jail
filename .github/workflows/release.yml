@@ -16,7 +16,7 @@ jobs:
         with:
           command: fmt
           args: --check
-  deploy-to-pypi:
+  release:
     needs: [lint]
     if: github.event_name == 'push' && contains(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
