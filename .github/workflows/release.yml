@@ -22,19 +22,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
       - name: Build jail
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release
+        run: |
+          scripts/build-binaries.sh ubuntu18.04
+          scripts/build-binaries.sh ubuntu20.04
+          scripts/build-binaries.sh ubuntu22.04
+          scripts/build-binaries.sh alpine3.17
+          scripts/build-binaries.sh alpine3.18
       - name: Release to GitHub
         uses: softprops/action-gh-release@v1
         with:
           generate_release_notes: true
           files: |
-            dist/*.whl
-            dist/*.tar.gz
+            dist/*.bin
