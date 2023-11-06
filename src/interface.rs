@@ -40,6 +40,8 @@ pub trait PluginInterface: Any + Send + Sync {
     /// - 0: hook executed without error
     /// - <0: Errno
     fn post_execution_hook(&self, name: &str, pid: Pid, regs: &user_regs_struct) -> i32;
+    fn process_did_create(&mut self, pid: Pid);
+    fn process_did_terminate(&mut self, pid: Pid);
 }
 
 #[derive(PartialEq, Hash, Clone, Debug)]

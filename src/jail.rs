@@ -264,7 +264,8 @@ impl Jail {
             | PtraceOptions::PTRACE_O_EXITKILL
             | PtraceOptions::PTRACE_O_TRACECLONE
             | PtraceOptions::PTRACE_O_TRACEFORK
-            | PtraceOptions::PTRACE_O_TRACEVFORK;
+            | PtraceOptions::PTRACE_O_TRACEVFORK
+            | PtraceOptions::PTRACE_O_TRACEEXEC;
 
         // Trace child with ptrace(PTRACE_SEIZE)
         match ptrace::seize(child, ptrace_options) {
@@ -320,6 +321,9 @@ impl Jail {
                                 debug!("EXIT (pid {:?}) status {:?}", pid, code);
                                 match result.status.pid() {
                                     Some(p) => {
+                                        for (_, plugin) in (&mut self.plugins).into_iter() {
+                                            plugin.process_did_terminate(p);
+                                        }
                                         if p == child {
                                             debug!("Our very child has exited. Done.");
                                             if self.cli.watch {
@@ -519,6 +523,19 @@ impl Jail {
                                 );
                                 extra_info = path.display().to_string();
                             }
+                            "openat" => {
+                                let path_str = panic_if_err!(utils::read_string(
+                                    target,
+                                    syscall_arg2!(regs) as usize
+                                ));
+                                let path = panic_if_err!(utils::get_abs_path_as(&path_str, target));
+                                allow = self.policy_inst.check_path_op(
+                                    &path.display().to_string(),
+                                    PathOps::OpOpen,
+                                    syscall_arg4!(regs) as i32,
+                                );
+                                extra_info = path.display().to_string();
+                            }
                             "access" => {
                                 let path_str = panic_if_err!(utils::read_string(
                                     target,
@@ -638,6 +655,11 @@ impl Jail {
                             } else {
                                 debug!("allowed syscall {}", syscall_name);
                             }
+                        }
+                    }
+                    ptrace::Event::PTRACE_EVENT_EXEC => {
+                        for (_, plugin) in (&mut self.plugins).into_iter() {
+                            plugin.process_did_create(target);
                         }
                     }
                     ptrace::Event::PTRACE_EVENT_CLONE

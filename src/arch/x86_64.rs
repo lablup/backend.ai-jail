@@ -27,6 +27,12 @@ macro_rules! syscall_arg3 {
     };
 }
 
+macro_rules! syscall_arg4 {
+    ($x:expr) => {
+        $x.rcx
+    };
+}
+
 macro_rules! syscall_ret {
     ($x:expr) => {
         $x.rax
